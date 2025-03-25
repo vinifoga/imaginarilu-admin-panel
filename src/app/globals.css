@@ -19,8 +19,27 @@
   }
 }
 
+@layer components {
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+#qr-reader {
+  overflow: hidden !important;
+  border-radius: 0.5rem !important;
+}
+
+#qr-reader video {
+  max-width: 100% !important;
+  height: auto !important;
+  object-fit: cover !important;
 }
