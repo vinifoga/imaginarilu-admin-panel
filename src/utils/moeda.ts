@@ -10,6 +10,18 @@ export function formatarMoeda(valor: string | number): string {
   }).format(numero);
 }
 
+export function formatarMoedaBR(valor: string | number): string {
+  console.log(valor);
+  const numero =
+    typeof valor === "string"
+      ? parseFloat(valor.replace(/[^0-9]/g, ""))
+      : valor;
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(numero);
+}
+
 export function parseMoeda(valor: string): number {
   return parseFloat(valor.replace(/[^0-9]/g, "")) / 100;
 }

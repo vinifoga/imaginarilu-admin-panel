@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
-import { formatarMoeda, parseMoeda } from '@/utils/moeda';
+import { formatarMoeda, formatarPorcentagem, parseMoeda } from '@/utils/moeda';
 import Select from 'react-select';
 import PlaceholderImage from '../../../../../components/PlaceholderImage';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
@@ -22,7 +22,15 @@ interface Product {
   sku: string;
   cost_price: number;
   sale_price: number;
-  image_url: string | null; // Adicione este campo
+  image_url: string | null;
+  sell_shopee: boolean;
+  sell_mercado_livre: boolean;
+  sale_price_shopee: number;
+  sale_price_mercado_livre: number;
+  default_profit_margin: number;
+  profit_margin_virtual_shop: number;
+  profit_margin_shopee: number;
+  profit_margin_mercado_livre: number;
 }
 
 interface ComponentProduct {
@@ -38,15 +46,22 @@ export default function NovoProdutoPage() {
   const [sku, setSku] = useState<string>('');
   const [valorCompra, setValorCompra] = useState<string>('');
   const [porcentagemLucro, setPorcentagemLucro] = useState<string>('');
+  const [porcentagemLucroLojaVirtual, setPorcentagemLucroLojaVirtual] = useState<string>('');
+  const [porcentagemLucroShopee, setPorcentagemLucroShopee] = useState<string>('');
+  const [porcentagemLucroMercadoLivre, setPorcentagemLucroMercadoLivre] = useState<string>('');
   const [valorVenda, setValorVenda] = useState<string>('');
+  const [valorVendaLojaVirtual, setValorVendaLojaVirtual] = useState<string>('');
+  const [valorVendaShopee, setValorVendaShopee] = useState<string>('');
+  const [valorVendaMercadoLivre, setValorVendaMercadoLivre] = useState<string>('');
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<Categoria[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [valorVendaEditavel, setValorVendaEditavel] = useState<boolean>(false);
   const [imagens, setImagens] = useState<(File | null)[]>([null, null, null]); // Array para 3 imagens
   const [linksImagens, setLinksImagens] = useState<string[]>([]);
   const [managesStock, setManagesStock] = useState<boolean>(false);
   const [sellOnline, setSellOnline] = useState<boolean>(false);
+  const [sellShopee, setSellShopee] = useState<boolean>(false);
+  const [sellMercadoLivre, setSellMercadoLivre] = useState<boolean>(false);
   const [quantity, setQuantity] = useState<number>(0);
   const [abaAtiva, setAbaAtiva] = useState<'simples' | 'composto'>('simples');
   const [componentes, setComponentes] = useState<ComponentProduct[]>([]);
@@ -55,7 +70,12 @@ export default function NovoProdutoPage() {
   const [resultadosPesquisa, setResultadosPesquisa] = useState<Product[]>([]);
   const [termoPesquisa, setTermoPesquisa] = useState<string>('');
   const [mostrarScanner, setMostrarScanner] = useState(false);
+  const [mostrarScannerAddProduto, setMostrarScannerAddProduto] = useState(false);
   const scannerModalRef = useRef<{ stopScanner: () => void } | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number[]>([]);
+  
+  
 
   const gerarSku = (nome: string) => {
     const nomeAbreviado = nome.substring(0, 3).toUpperCase();
@@ -85,9 +105,26 @@ export default function NovoProdutoPage() {
     fetchCategorias();
   }, []);
 
-  const calcularValorVenda = (valorCompra: string, porcentagemLucro: string) => {
-    if (valorVendaEditavel) return;
+  useEffect(() => {
+    setPorcentagemLucro(formatarPorcentagem(100));
+    setPorcentagemLucroLojaVirtual(formatarPorcentagem(115));
+    setPorcentagemLucroShopee(formatarPorcentagem(117));
+    setPorcentagemLucroMercadoLivre(formatarPorcentagem(117));
+  }, []);
 
+  useEffect(() => { 
+    if(sellOnline || sellShopee || sellMercadoLivre){
+      setManagesStock(true);
+    }
+    if(managesStock){
+      setQuantity(1);
+    }
+    if(!managesStock){
+      setQuantity(0);
+    }
+  },[sellOnline, sellShopee, sellMercadoLivre, managesStock]);
+
+  const calcularValorVenda = (valorCompra: string, porcentagemLucro: string, field?: string) => {
     const valorCompraNumerico = parseMoeda(valorCompra);
     const porcentagemNumerica = parseFloat(porcentagemLucro.replace(',', '.'));
 
@@ -95,36 +132,183 @@ export default function NovoProdutoPage() {
       setValorVenda('');
       return;
     }
-
     const lucro = valorCompraNumerico * (porcentagemNumerica / 100);
     const valorVendaCalculado = valorCompraNumerico + lucro;
+
+    switch (field) {
+      case 'lojaVirtual':
+        setValorVendaLojaVirtual(formatarMoeda(valorVendaCalculado));
+        break;
+      case 'shopee':
+        setValorVendaShopee(formatarMoeda(valorVendaCalculado));
+        break;
+      case 'mercadoLivre':
+        setValorVendaMercadoLivre(formatarMoeda(valorVendaCalculado));
+        break;
+      default:
     setValorVenda(formatarMoeda(valorVendaCalculado));
   };
+}
+
+  const calcularValorVendaComposto = (porcentagem: string, field?: string) => {
+    const totalValorVendaComposto = componentes.reduce((acc, componente) => {
+      return acc + componente.product.sale_price * componente.quantity;
+    }, 0);
+
+    const porcentagemLucro = parseFloat(porcentagem.replace('%', '').replace(',', '.'));
+
+    if (isNaN(totalValorVendaComposto) || isNaN(porcentagemLucro)) {
+      setValorVendaLojaVirtual('');
+      return;
+    }
+
+    const valorCustoEquivalente = totalValorVendaComposto/2;
+
+    const lucro = valorCustoEquivalente * (porcentagemLucro / 100);
+    const valorVendaCalculado = valorCustoEquivalente + lucro;
+
+    switch (field) {  
+      case 'lojaVirtual':
+        setValorVendaLojaVirtual(formatarMoeda(valorVendaCalculado));
+        break;
+      case 'shopee':
+        setValorVendaShopee(formatarMoeda(valorVendaCalculado));
+        break;
+      case 'mercadoLivre':
+        setValorVendaMercadoLivre(formatarMoeda(valorVendaCalculado));
+        break;
+      default:
+        setValorVendaComposto(formatarMoeda(valorVendaCalculado));
+    }
+  };
+
+  const calcularPorcentagemLucro = (valorVenda: string, valorCompra: string, field?: string) => {
+    const valorCompraNumerico = parseMoeda(valorCompra);
+    const valorVendaNumerico = parseMoeda(valorVenda);
+
+    console.log("valorCompraNumerico: ", valorCompraNumerico);
+    console.log("valorVendaNumerico: ", valorVendaNumerico);
+    console.log("field: ", field);
+  
+    if (isNaN(valorCompraNumerico) || isNaN(valorVendaNumerico)) {
+      setPorcentagemLucro('');
+      return;
+    }
+    const lucro = valorVendaNumerico - valorCompraNumerico;
+    const porcentagemLucroCalculada = (lucro / valorCompraNumerico) * 100;
+    
+    switch (field) {
+      case 'lojaVirtual':
+        setPorcentagemLucroLojaVirtual(formatarPorcentagem(porcentagemLucroCalculada));
+        break;
+      case 'shopee':
+        setPorcentagemLucroShopee(formatarPorcentagem(porcentagemLucroCalculada));
+        break;
+      case 'mercadoLivre':
+        setPorcentagemLucroMercadoLivre(formatarPorcentagem(porcentagemLucroCalculada));
+        break;
+      default:
+        setPorcentagemLucro(formatarPorcentagem(porcentagemLucroCalculada));
+    }
+  };
+  
+  const calcularPorcentagemLucroComposto = (valorVenda: string, field?: string) => {
+  
+    const totalValorVendaComposto = componentes.reduce((acc, componente) => {
+      return acc + componente.product.sale_price * componente.quantity;
+    }, 0);
+  
+    const valorVendaNumerico = parseMoeda(valorVenda);
+  
+    if(isNaN(valorVendaNumerico) || isNaN(totalValorVendaComposto)){
+      setPorcentagemLucro('');
+      return;
+    }
+  
+    const porcentagemLucroCalculada = 100 * valorVendaNumerico / totalValorVendaComposto;
+  
+    switch (field) {
+      case 'lojaVirtual':
+        setPorcentagemLucroLojaVirtual(formatarPorcentagem(porcentagemLucroCalculada));
+        break;
+      case 'shopee':
+        setPorcentagemLucroShopee(formatarPorcentagem(porcentagemLucroCalculada));
+        break;
+      case 'mercadoLivre':
+        setPorcentagemLucroMercadoLivre(formatarPorcentagem(porcentagemLucroCalculada));
+        break;
+      default:
+        setPorcentagemLucro(formatarPorcentagem(porcentagemLucroCalculada));
+    }
+  }
 
   const handleImagemChange = async (index: number, file: File | null) => {
-    if (!file) return;
+    const novosLinks = [...linksImagens];
+    const novasImagens = [...imagens];
+    
+    if (file) {
+      try {
+        setIsUploading(true);
+        // Inicializa o progresso
+        const newProgress = [...uploadProgress];
+        newProgress[index] = 0;
+        setUploadProgress(newProgress);
   
-    const formData = new FormData();
-    formData.append("file", file);
+        const formData = new FormData();
+        formData.append("file", file);
   
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
+        // Usando XMLHttpRequest para ter eventos de progresso
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable && event.total > 0) { // Verifica se total é válido
+            const progress = Math.round((event.loaded * 100) / event.total);
+            const newProgress = [...uploadProgress];
+            newProgress[index] = progress;
+            setUploadProgress(newProgress);
+          }
+        };
   
-    const data = await response.json();
+        const uploadPromise = new Promise((resolve, reject) => {
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(JSON.parse(xhr.responseText));
+            } else {
+              reject(new Error('Upload failed'));
+            }
+          };
+          
+          xhr.onerror = () => reject(new Error('Upload failed'));
+          xhr.open('POST', '/api/upload');
+          xhr.send(formData);
+        });
   
-    if (response.ok) {
-      const novosLinks = [...linksImagens];
-      novosLinks[index] = data.url;
-      setLinksImagens(novosLinks);
+        const data = await uploadPromise as { url: string };
   
-      const novasImagens = [...imagens];
-      novasImagens[index] = file;
-      setImagens(novasImagens);
+        novosLinks[index] = data.url;
+        novasImagens[index] = file;
+  
+      } catch (error) {
+        console.error("Erro no upload:", error);
+        alert("Erro ao enviar imagem. Tente novamente.");
+      } finally {
+        setIsUploading(false);
+        // Reseta o progresso
+        const newProgress = [...uploadProgress];
+        newProgress[index] = 0;
+        setUploadProgress(newProgress);
+      }
     } else {
-      console.error("Erro ao fazer upload da imagem:", data.error);
+      // Remove a imagem
+      novosLinks[index] = '';
+      novasImagens[index] = null;
+      const newProgress = [...uploadProgress];
+      newProgress[index] = 0;
+      setUploadProgress(newProgress);
     }
+  
+    setLinksImagens(novosLinks);
+    setImagens(novasImagens);
   };
   const salvarProduto = async () => {
   setLoading(true);
@@ -169,6 +353,26 @@ export default function NovoProdutoPage() {
 
   try {
     // Salvar o produto
+    console.log("ANTES DE SALVAR PRODUTO");
+    console.log("name: ", nome);
+    console.log("description: ", descricao);  
+    console.log("barcode: ", codigoBarras);
+    console.log("sku: ", sku);
+    console.log("cost_price: ", abaAtiva === 'simples' ? parseMoeda(valorCompra) : valorCompraComposto);
+    console.log("sale_price: ", abaAtiva === 'simples' ? parseMoeda(valorVenda) : parseMoeda(valorVendaComposto));
+    console.log("manages_stock: ", managesStock);
+    console.log("sell_online: ", sellOnline);
+    console.log("quantity: ", quantity);
+    console.log("sell_shopee: ", sellShopee);
+    console.log("sell_mercado_livre: ", sellMercadoLivre);
+    console.log("sale_price_shopee: ", parseMoeda(valorVendaShopee));
+    console.log("sale_price_mercado_livre: ", parseMoeda(valorVendaMercadoLivre));
+    console.log("default_profit_margin: ", (porcentagemLucro.replace('%','').replace(',', '.')),);
+    console.log("profit_margin_virtual_shop: ", (porcentagemLucroLojaVirtual.replace('%','').replace(',', '.')),);
+    console.log("profit_margin_shopee: ", (porcentagemLucroShopee.replace('%','').replace(',', '.')),);
+    console.log("profit_margin_mercado_livre: ", (porcentagemLucroMercadoLivre.replace('%','').replace(',', '.')),);
+    console.log("DEPOIS DE SALVAR PRODUTO");
+
     const { data: produto, error: produtoError } = await supabase
       .from('products')
       .insert([
@@ -182,6 +386,16 @@ export default function NovoProdutoPage() {
           manages_stock: managesStock,
           sell_online: sellOnline,
           quantity: quantity,
+          is_composition: abaAtiva === 'composto',
+          sell_shopee: sellShopee,
+          sell_mercado_livre: sellMercadoLivre,
+          sale_price_virtual_store: parseMoeda(valorVendaLojaVirtual),
+          sale_price_shopee: parseMoeda(valorVendaShopee),
+          sale_price_mercado_livre: parseMoeda(valorVendaMercadoLivre),
+          default_profit_margin: (porcentagemLucro.replace('%','').replace(',', '.')),
+          profit_margin_virtual_shop: (porcentagemLucroLojaVirtual.replace('%','').replace(',', '.')),
+          profit_margin_shopee: (porcentagemLucroShopee.replace('%','').replace(',', '.')),
+          profit_margin_mercado_livre: (porcentagemLucroMercadoLivre.replace('%','').replace(',', '.')),
         },
       ])
       .select();
@@ -248,12 +462,23 @@ const adicionarProduto = (produto: Product, quantidade: number) => {
 };
   
 const calcularValorCompra = (componentes: ComponentProduct[]) => {
-  const total = componentes.reduce((acc, componente) => {
+  const totalValorCompraComposto = componentes.reduce((acc, componente) => {
     return acc + componente.product.cost_price * componente.quantity;
   }, 0);
-  setValorCompraComposto(total); // Atualiza o valor de compra do produto composto
-  setValorVendaComposto(formatarMoeda(total)); // Atualiza o valor de venda do produto composto
+  setValorCompraComposto(totalValorCompraComposto); // Atualiza o valor de compra do produto composto
+  
+  const totalValorVendaComposto = componentes.reduce((acc, componente) => {
+    return acc + componente.product.sale_price * componente.quantity;
+  }, 0);
+  setValorVendaComposto(formatarMoeda(totalValorVendaComposto)); // Atualiza o valor de venda do produto composto
+  
+  const valorCustoEquivalente = totalValorVendaComposto/2;
+
+  setValorVendaLojaVirtual(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroLojaVirtual.replace('%','')) / 100)))); // Atualiza o valor de venda da loja virtual
+  setValorVendaShopee(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroShopee.replace('%','')) / 100)))); // Atualiza o valor de venda do Shopee
+  setValorVendaMercadoLivre(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroMercadoLivre.replace('%','')) / 100)))); // Atualiza o valor de venda do Mercado Livre
 };
+
   
   const removerProduto = (id: string) => {
     const novosComponentes = componentes.filter((c) => c.product.id !== id);
@@ -277,18 +502,40 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
         sku,
         cost_price,
         sale_price,
-        product_images (image_url)
+        product_images (image_url),
+        sell_shopee,
+        sell_mercado_livre,
+        sale_price_shopee,
+        sale_price_mercado_livre,
+        default_profit_margin,
+        profit_margin_virtual_shop,
+        profit_margin_shopee,
+        profit_margin_mercado_livre
       `)
       .or(`barcode.ilike.%${termo}%,sku.ilike.%${termo}%,description.ilike.%${termo}%`)
+      .neq('is_composition', true)  // Adiciona a condição onde is_composition não é true
       .limit(1, { foreignTable: 'product_images' }); // Limita a uma imagem por produto
   
     if (error) {
       console.error('Erro ao buscar produtos:', error);
     } else {
-      // Ajusta os dados para incluir a primeira imagem (se existir)
       const produtosComImagem = data.map((produto) => ({
-        ...produto,
-        image_url: produto.product_images[0]?.image_url || null, // Pega a primeira imagem ou null
+        id: produto.id,
+        name: produto.name,
+        description: produto.description,
+        barcode: produto.barcode,
+        sku: produto.sku,
+        cost_price: produto.cost_price,
+        sale_price: produto.sale_price,
+        image_url: produto.product_images[0]?.image_url || null,
+        sell_shopee: produto.sell_shopee,
+        sell_mercado_livre: produto.sell_mercado_livre,
+        sale_price_shopee: produto.sale_price_shopee,
+        sale_price_mercado_livre: produto.sale_price_mercado_livre,
+        default_profit_margin: produto.default_profit_margin,
+        profit_margin_virtual_shop: produto.profit_margin_virtual_shop,
+        profit_margin_shopee: produto.profit_margin_shopee,
+        profit_margin_mercado_livre: produto.profit_margin_mercado_livre,
       }));
       setResultadosPesquisa(produtosComImagem);
     }
@@ -300,12 +547,14 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
   };
 
   const handleScan = (result: string) => {
+    setTimeout(() => {
+      scannerModalRef.current?.stopScanner();
+    }, 100);
     setCodigoBarras(result);
     setMostrarScanner(false);
-    if (scannerModalRef.current) {
-      scannerModalRef.current.stopScanner();
-    }
+    
   };
+  
 
   const handleScannerError = (error: string) => {
     console.error('Erro no scanner:', error);
@@ -316,6 +565,25 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
       scannerModalRef.current.stopScanner();
     }
   };
+
+  const abrirCameraParaScannerAddProduto = () => {
+    setMostrarScannerAddProduto(true);
+  };
+
+  const handleScanAddProduto = (result: string) => {
+    setTimeout(() => {
+      scannerModalRef.current?.stopScanner();
+    }, 100);
+    setTermoPesquisa(result);
+    buscarProdutos(result);
+    setMostrarScannerAddProduto(false);
+    
+  };
+
+  const handleScannerErrorAddProduto = (error: string) => {
+    console.error('Erro no scanner:', error);
+  };
+
 
   return (
     <div className="min-h-screen p-6">
@@ -341,50 +609,105 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
 
       <div className="space-y-4">
         {/* Campo para upload de imagens */}
+        {/* Campo para upload de imagens */}
         <div>
           <label className="block text-sm font-medium text-gray-300">Imagens do Produto</label>
-          <div className="mt-2 flex gap-4">
-  {[0, 1, 2].map((index) => (
-    <div
-      key={index}
-      className="w-24 h-24 flex items-center justify-center border-2 border-dashed border-gray-400 rounded-lg cursor-pointer"
-      onClick={() => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = async (e) => {
-          const file = (e.target as HTMLInputElement).files?.[0] || null;
-          await handleImagemChange(index, file);
-        };
-        input.click();
-      }}
-    >
-      {imagens[index] ? (
-        <img
-          src={URL.createObjectURL(imagens[index]!)}
-          alt={`Preview ${index}`}
-          className="w-full h-full object-cover rounded-lg"
-        />
-      ) : (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-8 w-8 text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
-      )}
-    </div>
-  ))}
-</div>
+          <div className="mt-2 flex gap-4 items-center">
+              {[0, 1, 2].map((index) => (
+                <div
+                  key={index}
+                  className="relative w-24 h-24 flex items-center justify-center border-2 border-dashed border-gray-400 rounded-lg cursor-pointer"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = async (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0] || null;
+                      await handleImagemChange(index, file);
+                    };
+                    input.click();
+                  }}
+                >
+                  {imagens[index] ? (
+                    <img
+                      src={URL.createObjectURL(imagens[index]!)}
+                      alt={`Preview ${index}`}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : linksImagens[index] ? (
+                    <img
+                      src={linksImagens[index]}
+                      alt={`Produto ${index}`}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-8 w-8 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                  )}
+                </div>
+              ))}
+              
+              {/* Botão de lixeira ao lado do terceiro espaço */}
+              {(imagens.some(img => img) || linksImagens.some(link => link)) && (
+                <button
+                  onClick={() => {
+                    // Remove todas as imagens
+                    setImagens([null, null, null]);
+                    setLinksImagens(['', '', '']);
+                  }}
+                  className="ml-2 text-red-500 hover:text-red-700 transition-colors"
+                  title="Remover todas as imagens"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
         </div>
+
+        {/* Barra de progresso */}
+        {isUploading && (
+        <div className="mt-3 space-y-1">
+          <div className="flex justify-between text-xs text-gray-400">
+            <span>Enviando imagens...</span>
+            <span>
+              {Math.max(...uploadProgress.filter(p => !isNaN(p))) || 0}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-2.5">
+            <div 
+              className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" 
+              style={{ 
+                width: `${Math.max(...uploadProgress.filter(p => !isNaN(p))) || 0}%`,
+              }}
+            ></div>
+          </div>
+        </div>
+      )}
 
         {/* Campo Categoria (Multiselect) */}
         <div>
@@ -516,7 +839,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
           {/* Campo de Pesquisa e Adição de Produtos */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-300">Adicionar Produtos à Composição</label>
-            <div className="mt-2 flex gap-4">
+            <div className="mt-2 relative">
               <input
                 type="text"
                 placeholder="Pesquisar"
@@ -526,8 +849,26 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                   buscarProdutos(e.target.value);
                 }}
                 onBlur={handleInputBlur}
-                className="flex-1 p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                className="w-full p-2 pl-4 pr-10 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
               />
+              <button
+                onClick={abrirCameraParaScannerAddProduto}
+                className="absolute right-0 top-0 h-full px-3 flex items-center justify-center text-gray-400 hover:text-blue-500"
+              >
+                {/* Ícone de código de barras */}
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M4.4 3A1.4 1.4 0 0 0 3 4.4V6a1 1 0 0 1-2 0V4.4A3.4 3.4 0 0 1 4.4 1H6a1 1 0 0 1 0 2H4.4ZM17 2a1 1 0 0 1 1-1h1.6A3.4 3.4 0 0 1 23 4.4V6a1 1 0 1 1-2 0V4.4A1.4 1.4 0 0 0 19.6 3H18a1 1 0 0 1-1-1ZM2 17a1 1 0 0 1 1 1v1.6A1.4 1.4 0 0 0 4.4 21H6a1 1 0 1 1 0 2H4.4A3.4 3.4 0 0 1 1 19.6V18a1 1 0 0 1 1-1ZM22 17a1 1 0 0 1 1 1v1.6a3.4 3.4 0 0 1-3.4 3.4H18a1 1 0 1 1 0-2h1.6a1.4 1.4 0 0 0 1.4-1.4V18a1 1 0 0 1 1-1ZM18 8a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0V9a1 1 0 0 1 1-1ZM15 9a1 1 0 1 0-2 0v6a1 1 0 1 0 2 0V9ZM10 8a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0V9a1 1 0 0 1 1-1ZM7 9a1 1 0 1 0-2 0v6a1 1 0 1 0 2 0V9Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </button>
             </div>
 
             {/* Lista de Resultados da Pesquisa */}
@@ -543,6 +884,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                       <p className="text-gray-300">{produto.description}</p>
                       <p className="text-sm text-gray-400">Código: {produto.barcode}</p>
                       <p className="text-sm text-gray-400">SKU: {produto.sku}</p>
+                      <p className="text-sm text-gray-400">Valor: {formatarMoeda(produto.sale_price)}</p>
                     </div>
                     <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-gray-700">
                       {produto.image_url ? (
@@ -599,7 +941,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                       className="w-20 p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
                     />
                     <span className="text-gray-300">
-                      R$ {(componente.product.cost_price * componente.quantity).toFixed(2)}
+                      {formatarMoeda((componente.product.sale_price * componente.quantity))}
                     </span>
                     <button
                       onClick={() => removerProduto(componente.product.id)}
@@ -610,6 +952,14 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                   </div>
                 </div>
               ))}
+                <div className="mt-4 flex justify-between">
+                <label className="block text-sm font-medium text-gray-300">
+                  Total: {componentes.reduce((acc, componente) => acc + componente.quantity, 0)} itens
+                </label>
+                <label className="block text-sm font-medium text-gray-300">
+                  Valor Total: {formatarMoeda(componentes.reduce((acc, componente) => acc + (componente.product.sale_price * componente.quantity), 0))}
+                </label>
+                </div>
             </div>
           </div>
         </>
@@ -625,83 +975,92 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                 onChange={(e) => {
                   setValorCompra(formatarMoeda(e.target.value));
                   calcularValorVenda(e.target.value, porcentagemLucro);
+                  calcularValorVenda(e.target.value, porcentagemLucroLojaVirtual, 'lojaVirtual');
+                  calcularValorVenda(e.target.value, porcentagemLucroShopee, 'shopee');
+                  calcularValorVenda(e.target.value, porcentagemLucroMercadoLivre, 'mercadoLivre');
                 }}
                 className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
               />
             </div>
           )}
 
-        {/* Campo Porcentagem de Lucro (Produto Simples) */}
-        {abaAtiva === 'simples' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
-            <input
-              type="text"
-              value={porcentagemLucro}
-              onChange={(e) => {
-                setPorcentagemLucro(e.target.value);
-                calcularValorVenda(valorCompra, e.target.value);
-              }}
-              className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-            />
+         {/* Campo Porcentagem de Lucro (Produto Simples) */}
+         {abaAtiva === 'simples' && (
+          <div className="flex justify-between mt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+              <input
+                type="text"
+                value={porcentagemLucro}
+                onChange={(e) => {
+                  setPorcentagemLucro(e.target.value);
+                  calcularValorVenda(valorCompra, e.target.value);
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
+
+            {/* Campo Valor de Venda (Produto Simples) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                <input
+                  type="text"
+                  value={valorVenda}
+                  onChange={(e) => {
+                    calcularPorcentagemLucro(e.target.value, valorCompra);
+                    setValorVenda(formatarMoeda(e.target.value));
+                  }}
+                  className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                />
+              </div>
           </div>
         )}
 
-        {/* Campo Valor de Venda (Produto Simples) */}
-        {abaAtiva === 'simples' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
-            <input
-              type="text"
-              value={valorVenda}
-              onChange={(e) => {
-                setValorVenda(formatarMoeda(e.target.value));
-                setValorVendaEditavel(true);
-              }}
-              className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-            />
-          </div>
-        )}
-
-        {/* Campo Valor de Venda (Produto Composto) */}
+        {/* Campo Valor de Compra (Produto composto) */}
         {abaAtiva === 'composto' && (
           <div>
-            <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+            <label className="block text-sm font-medium text-gray-300">Valor de Compra</label>
             <input
               type="text"
-              value={valorVendaComposto}
-              onChange={(e) => {
-                setValorVendaComposto(formatarMoeda(e.target.value));
-              }}
+              value={formatarMoeda(valorCompraComposto)}
+              readOnly
               className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
             />
           </div>
         )}
 
-        {/* Campos Controla Estoque e Vender Online (um ao lado do outro) */}
-        <div className="flex justify-between">
-          {/* Campo Controla Estoque */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              checked={managesStock}
-              onChange={(e) => setManagesStock(e.target.checked)}
-              className="mr-2"
-            />
-            <label className="text-sm font-medium text-gray-300">Controla Estoque</label>
-          </div>
 
-          {/* Campo Vender Online */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              checked={sellOnline}
-              onChange={(e) => setSellOnline(e.target.checked)}
-              className="mr-2"
-            />
-            <label className="text-sm font-medium text-gray-300">Vender Online</label>
+         {/* Campo Porcentagem de Lucro (Produto composto) */}
+         {abaAtiva === 'composto' && (
+          <div className="flex justify-between mt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+              <input
+                type="text"
+                value={porcentagemLucro}
+                onChange={(e) => {
+                  setPorcentagemLucro(e.target.value);
+                  calcularValorVendaComposto(e.target.value);
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
+
+            {/* Campo Valor de Venda (Produto composto) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+              <input
+                type="text"
+                value={valorVendaComposto}
+                onChange={(e) => {
+                  setValorVendaComposto(formatarMoeda(e.target.value));
+                  calcularPorcentagemLucroComposto(e.target.value);
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Campo Quantidade */}
         <div>
@@ -713,6 +1072,259 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
             className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
           />
         </div>
+
+        {/* Campos Controla Estoque e Vender Online */}
+                <div className="flex justify-between">
+                  {/* Campo Controla Estoque */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={managesStock}
+                      onChange={(e) => setManagesStock(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <label className="text-sm font-medium text-gray-300">Controla Estoque</label>
+                  </div>
+        
+                  {/* Campo Vender Online */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={sellOnline}
+                      onChange={(e) => setSellOnline(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <label className="text-sm font-medium text-gray-300">Loja Virtual</label>
+                  </div>
+                </div>
+        
+                <div className="flex justify-between">
+                  {/* Campo Vender Shopee */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={sellShopee}
+                      onChange={(e) => setSellShopee(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <label className="text-sm font-medium text-gray-300">Shopee</label>
+                  </div>
+        
+                  {/* Campo Vender Mercado Livre */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={sellMercadoLivre}
+                      onChange={(e) => setSellMercadoLivre(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <label className="text-sm font-medium text-gray-300">Mercado Livre</label>
+                  </div>
+                </div>
+        
+                {/* Campos porcentagem e valor Loja Virtual - Simples*/}
+                {abaAtiva === 'simples' && sellOnline && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Loja Virtual</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroLojaVirtual}
+                        onChange={(e) => {
+                          setPorcentagemLucroLojaVirtual(e.target.value);
+                          calcularValorVenda(valorCompra, e.target.value, 'lojaVirtual');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaLojaVirtual}
+                        onChange={(e) => {
+                          setValorVendaLojaVirtual(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucro(e.target.value, valorCompra, 'lojaVirtual');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
+
+                {/* Campos porcentagem e valor Loja Virtual - Composto*/}
+                {abaAtiva === 'composto' && sellOnline && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Loja Virtual</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroLojaVirtual}
+                        onChange={(e) => {
+                          setPorcentagemLucroLojaVirtual(e.target.value);
+                          calcularValorVendaComposto(e.target.value, 'lojaVirtual');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaLojaVirtual}
+                        onChange={(e) => {
+                          setValorVendaLojaVirtual(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucroComposto(e.target.value, 'lojaVirtual');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
+        
+                {/* Campos porcentagem e valor Shopee - Simples*/}
+                {abaAtiva == 'simples' && sellShopee && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Shopee</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroShopee}
+                        onChange={(e) => {
+                          setPorcentagemLucroShopee(e.target.value);
+                          calcularValorVenda(valorCompra, e.target.value, 'shopee');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaShopee}
+                        onChange={(e) => {
+                          setValorVendaShopee(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucro(e.target.value, valorCompra, 'shopee');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
+
+                {/* Campos porcentagem e valor Shopee - Composto*/}
+                {abaAtiva == 'composto' && sellShopee && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Shopee</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroShopee}
+                        onChange={(e) => {
+                          setPorcentagemLucroShopee(e.target.value);
+                          calcularValorVendaComposto(e.target.value, 'shopee');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaShopee}
+                        onChange={(e) => {
+                          setValorVendaShopee(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucroComposto(e.target.value, 'shopee');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
+        
+                {/* Campos porcentagem e valor Mercado livre - Simples*/}
+                {abaAtiva == 'simples' && sellMercadoLivre && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Mercado livre</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroMercadoLivre}
+                        onChange={(e) => {
+                          setPorcentagemLucroMercadoLivre(e.target.value);
+                          calcularValorVenda(valorCompra, e.target.value, 'mercadoLivre');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaMercadoLivre}
+                        onChange={(e) => {
+                          setValorVendaMercadoLivre(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucro(e.target.value, valorCompra, 'mercadoLivre');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
+
+                {/* Campos porcentagem e valor Mercado livre - Composto*/}
+                {abaAtiva == 'composto' && sellMercadoLivre && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Mercado livre</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroMercadoLivre}
+                        onChange={(e) => {
+                          setPorcentagemLucroMercadoLivre(e.target.value);
+                          calcularValorVendaComposto(e.target.value, 'mercadoLivre');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaMercadoLivre}
+                        onChange={(e) => {
+                          setValorVendaMercadoLivre(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucroComposto(e.target.value, 'mercadoLivre');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
 
        {/* Botão de Voltar no canto inferior esquerdo */}
       <button
@@ -745,16 +1357,25 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
             {loading ? 'Salvando...' : 'Salvar'}
           </button>
           {mostrarScanner && (
-                  <BarcodeScannerModal
-                    ref={scannerModalRef} // Passe a ref para o modal
-                    onScan={handleScan}
-                    onError={handleScannerError}
-                    onClose={() => {
-                      setMostrarScanner(false);
-                      scannerModalRef.current?.stopScanner();
-                    }}
-                  />
-                )}
+            <BarcodeScannerModal
+              ref={scannerModalRef}
+              onScan={handleScan}
+              onError={handleScannerError}
+              onClose={() => {
+                setMostrarScanner(false);
+              }}
+            />
+          )}
+          {abaAtiva == 'composto' && mostrarScannerAddProduto && (
+            <BarcodeScannerModal
+              ref={scannerModalRef}
+              onScan={handleScanAddProduto}
+              onError={handleScannerErrorAddProduto}
+              onClose={() => {
+                setMostrarScannerAddProduto(false);
+              }}
+            />
+            )}
         </div>
       </div>
     </div>

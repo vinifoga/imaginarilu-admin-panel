@@ -52,6 +52,8 @@ export default function EditarProdutoPage() {
   const [linksImagens, setLinksImagens] = useState<string[]>([]);
   const [managesStock, setManagesStock] = useState<boolean>(false);
   const [sellOnline, setSellOnline] = useState<boolean>(false);
+  const [sellShopee, setSellShopee] = useState<boolean>(false);
+  const [sellMercadoLivre, setSellMercadoLivre] = useState<boolean>(false);
   const [quantity, setQuantity] = useState<number>(0);
   const [abaAtiva, setAbaAtiva] = useState<'simples' | 'composto'>('simples');
   const [componentes, setComponentes] = useState<ComponentProduct[]>([]);
@@ -432,12 +434,6 @@ export default function EditarProdutoPage() {
     }, 0);
     setValorVendaComposto(formatarMoeda(total)); // Atualiza o valor de venda do produto composto
   };
-    
-    const removerProduto = (id: string) => {
-      const novosComponentes = componentes.filter((c) => c.product.id !== id);
-      setComponentes(novosComponentes);
-      calcularValorCompra(novosComponentes);
-    };
   
     const buscarProdutos = async (termo: string) => {
       if (!termo) {
@@ -864,7 +860,7 @@ export default function EditarProdutoPage() {
                     <span className="text-gray-300">{componente.product.description}</span>
                   </div>
 
-                  {/* Quantidade, valor e botão de remover */}
+                  {/* Quantidade */}
                   <div className="flex items-center gap-4">
                     <input
                       type="number"
@@ -883,12 +879,6 @@ export default function EditarProdutoPage() {
                     <span className="text-gray-300">
                       R$ {(componente.product.cost_price * componente.quantity).toFixed(2)}
                     </span>
-                    <button
-                      onClick={() => removerProduto(componente.product.id)}
-                      className="text-red-500 hover:text-red-600"
-                    >
-                      Remover
-                    </button>
                   </div>
                 </div>
               ))}
@@ -915,35 +905,37 @@ export default function EditarProdutoPage() {
 
         {/* Campo Porcentagem de Lucro (Produto Simples) */}
         {abaAtiva === 'simples' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
-            <input
-              type="text"
-              value={porcentagemLucro}
-              onChange={(e) => {
-                setPorcentagemLucro(e.target.value);
-                calcularValorVenda(valorCompra, e.target.value);
-              }}
-              className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-            />
+          <div className="flex justify-between mt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+              <input
+                type="text"
+                value={porcentagemLucro}
+                onChange={(e) => {
+                  setPorcentagemLucro(e.target.value);
+                  calcularValorVenda(valorCompra, e.target.value);
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
+
+            {/* Campo Valor de Venda (Produto Simples) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                <input
+                  type="text"
+                  value={valorVenda}
+                  onChange={(e) => {
+                    calcularPorcentagemLucro(e.target.value, valorCompra);
+                    setValorVenda(formatarMoeda(e.target.value));
+                  }}
+                  className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                />
+              </div>
           </div>
         )}
 
-        {/* Campo Valor de Venda (Produto Simples) */}
-        {abaAtiva === 'simples' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
-            <input
-              type="text"
-              value={valorVenda}
-              onChange={(e) => {
-                calcularPorcentagemLucro(e.target.value, valorCompra);
-                setValorVenda(formatarMoeda(e.target.value));
-              }}
-              className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-            />
-          </div>
-        )}
+        
 
         {/* Campo Valor de Venda (Produto Composto) */}
         {abaAtiva === 'composto' && (
@@ -960,7 +952,18 @@ export default function EditarProdutoPage() {
           </div>
         )}
 
-        {/* Campos Controla Estoque e Vender Online (um ao lado do outro) */}
+        {/* Campo Quantidade */}
+        <div>
+          <label className="block text-sm font-medium text-gray-300">Quantidade</label>
+          <input
+            type="number"
+            value={quantity}
+            onChange={(e) => setQuantity(Number(e.target.value))}
+            className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+          />
+        </div>
+
+        {/* Campos Controla Estoque e Vender Online */}
         <div className="flex justify-between">
           {/* Campo Controla Estoque */}
           <div className="flex items-center">
@@ -981,20 +984,135 @@ export default function EditarProdutoPage() {
               onChange={(e) => setSellOnline(e.target.checked)}
               className="mr-2"
             />
-            <label className="text-sm font-medium text-gray-300">Vender Online</label>
+            <label className="text-sm font-medium text-gray-300">Loja Virtual</label>
           </div>
         </div>
 
-        {/* Campo Quantidade */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300">Quantidade</label>
-          <input
-            type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-          />
+        <div className="flex justify-between">
+          {/* Campo Vender Shopee */}
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              checked={sellShopee}
+              onChange={(e) => setSellShopee(e.target.checked)}
+              className="mr-2"
+            />
+            <label className="text-sm font-medium text-gray-300">Shopee</label>
+          </div>
+
+          {/* Campo Vender Mercado Livre */}
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              checked={sellMercadoLivre}
+              onChange={(e) => setSellMercadoLivre(e.target.checked)}
+              className="mr-2"
+            />
+            <label className="text-sm font-medium text-gray-300">Mercado Livre</label>
+          </div>
         </div>
+
+        {/* Campos porcentagem e valor Venda Online */}
+        {sellOnline && (
+          <div>
+          <label className="block text-lg font-medium text-gray-300">Valores Loja Virtual</label>
+          <div className="flex justify-between mt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+              <input
+                type="text"
+                value={porcentagemLucro}
+                onChange={(e) => {
+                  setPorcentagemLucro(e.target.value);
+                  calcularValorVenda(valorCompra, e.target.value);
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+              <input
+                type="text"
+                value={valorVenda}
+                onChange={(e) => {
+                  calcularPorcentagemLucro(e.target.value, valorCompra);
+                  setValorVenda(formatarMoeda(e.target.value));
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* Campos porcentagem e valor Shopee */}
+        {sellShopee && (
+          <div>
+          <label className="block text-lg font-medium text-gray-300">Valores Shopee</label>
+          <div className="flex justify-between mt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+              <input
+                type="text"
+                value={porcentagemLucro}
+                onChange={(e) => {
+                  setPorcentagemLucro(e.target.value);
+                  calcularValorVenda(valorCompra, e.target.value);
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+              <input
+                type="text"
+                value={valorVenda}
+                onChange={(e) => {
+                  calcularPorcentagemLucro(e.target.value, valorCompra);
+                  setValorVenda(formatarMoeda(e.target.value));
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* Campos porcentagem e valor Mercado livre */}
+        {sellMercadoLivre && (
+          <div>
+          <label className="block text-lg font-medium text-gray-300">Valores Mercado livre</label>
+          <div className="flex justify-between mt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+              <input
+                type="text"
+                value={porcentagemLucro}
+                onChange={(e) => {
+                  setPorcentagemLucro(e.target.value);
+                  calcularValorVenda(valorCompra, e.target.value);
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+              <input
+                type="text"
+                value={valorVenda}
+                onChange={(e) => {
+                  calcularPorcentagemLucro(e.target.value, valorCompra);
+                  setValorVenda(formatarMoeda(e.target.value));
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
+          </div>
+        </div>
+        )}
 
        {/* Botão de Voltar no canto inferior esquerdo */}
       <button
