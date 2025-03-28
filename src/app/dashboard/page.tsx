@@ -5,7 +5,7 @@ import { useLoading } from '@/contexts/loading-context';
 import { supabase } from '@/lib/supabaseCliente';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { FiShoppingCart, FiList, FiPackage, FiDollarSign, FiLogOut } from 'react-icons/fi';
+import { FiShoppingCart, FiList, FiPackage, FiDollarSign, FiLogOut, FiSearch } from 'react-icons/fi';
 import { ClipLoader } from 'react-spinners';
 
 export default function DashboardPage() {
@@ -29,6 +29,11 @@ export default function DashboardPage() {
 
   // Configuração dos botões
   const buttons = [
+    {
+      path: '/dashboard/consulta-preco',
+      icon: <FiSearch className="text-lg" />,
+      label: 'Consulta de Preço'
+    },
     {
       path: '/dashboard/vender',
       icon: <FiShoppingCart className="text-lg" />,
