@@ -4,11 +4,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
-import { formatarMoeda, formatarPorcentagem, parseMoeda, parseMoedaCalculoPorcentagem } from '@/utils/moeda';
+import { formatarMoeda, formatarPorcentagem, parseMoeda } from '@/utils/moeda';
 import Select from 'react-select';
 import PlaceholderImage from '../../../../../../components/PlaceholderImage';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
-import { useLoading } from '@/contexts/loading-context';
 
 interface Categoria {
   id: string;
@@ -24,10 +23,19 @@ interface Product {
   cost_price: number;
   sale_price: number;
   image_url: string | null;
+  sell_shopee: boolean;
+  sell_mercado_livre: boolean;
+  sale_price_shopee: number;
+  sale_price_mercado_livre: number;
+  default_profit_margin: number;
+  profit_margin_virtual_shop: number;
+  profit_margin_shopee: number;
+  profit_margin_mercado_livre: number;
   manages_stock: boolean;
   sell_online: boolean;
   quantity: number;
   is_composition: boolean;
+  sale_price_virtual_store: number;
 }
 
 interface ComponentProduct {
@@ -47,7 +55,7 @@ export default function EditarProdutoPage() {
   const [valorVenda, setValorVenda] = useState<string>('');
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<Categoria[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const { isLoading, setLoading } = useLoading();
+  const [loading, setLoading] = useState<boolean>(false);
   const [imagens, setImagens] = useState<(File | null)[]>([null, null, null]);
   const [linksImagens, setLinksImagens] = useState<string[]>([]);
   const [managesStock, setManagesStock] = useState<boolean>(false);
@@ -57,17 +65,22 @@ export default function EditarProdutoPage() {
   const [quantity, setQuantity] = useState<number>(0);
   const [abaAtiva, setAbaAtiva] = useState<'simples' | 'composto'>('simples');
   const [componentes, setComponentes] = useState<ComponentProduct[]>([]);
+  const [valorCompraComposto, setValorCompraComposto] = useState<number>(0);
   const [valorVendaComposto, setValorVendaComposto] = useState<string>('');
   const [resultadosPesquisa, setResultadosPesquisa] = useState<Product[]>([]);
   const [termoPesquisa, setTermoPesquisa] = useState<string>('');
   const [uploadProgress, setUploadProgress] = useState<number[]>([]);
   const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [uploadComplete] = useState(false);
+  const scannerModalRef = useRef<{ stopScanner: () => void } | null>(null);
+  const [valorVendaLojaVirtual, setValorVendaLojaVirtual] = useState<string>('');
+  const [valorVendaShopee, setValorVendaShopee] = useState<string>('');
+  const [valorVendaMercadoLivre, setValorVendaMercadoLivre] = useState<string>('');
+  const [porcentagemLucroLojaVirtual, setPorcentagemLucroLojaVirtual] = useState<string>('');
+  const [porcentagemLucroShopee, setPorcentagemLucroShopee] = useState<string>('');
+  const [porcentagemLucroMercadoLivre, setPorcentagemLucroMercadoLivre] = useState<string>('');
   const [isComposition, setComposition] = useState(false);
   const [mostrarScanner, setMostrarScanner] = useState(false);
-  const [mostrarScannerComposto, setMostrarScannerComposto] = useState(false);
-  const scannerModalRef = useRef<{ stopScanner: () => void } | null>(null);
-
+  const [mostrarScannerAddProduto, setMostrarScannerAddProduto] = useState(false);
 
   // Função para buscar os dados do produto
   const fetchProduto = async () => {
@@ -83,18 +96,33 @@ export default function EditarProdutoPage() {
       if (produtoError) throw produtoError;
 
       // Preenche os campos com os dados do produto
-      setNome(produto.name);
-      setDescricao(produto.description);
-      setCodigoBarras(produto.barcode);
-      setSku(produto.sku);
-      setValorCompra(formatarMoeda(produto.cost_price));
-      setValorVenda(formatarMoeda(produto.sale_price));
-      setPorcentagemLucro(getPorcentagemLucro(produto.cost_price, produto.sale_price));
-      setManagesStock(produto.manages_stock);
-      setSellOnline(produto.sell_online);
-      setQuantity(produto.quantity);
-      setComposition(produto.is_composition);
-      setAbaAtiva(produto.is_composition ? 'composto' : 'simples');
+      setNome(produto.name ? produto.name : '');
+      setDescricao(produto.description ? produto.description : '');
+      setCodigoBarras(produto.barcode ? produto.barcode : '');
+      setSku(produto.sku ? produto.sku : '');
+      if(produto.is_composition){
+        setAbaAtiva('composto');
+        setValorCompraComposto(parseMoeda(formatarMoeda(produto.cost_price)));
+        setValorVendaComposto(formatarMoeda(produto.sale_price))
+      }
+      else {
+        setAbaAtiva('simples');
+        setValorCompra(formatarMoeda(produto.cost_price));
+        setValorVenda(formatarMoeda(produto.sale_price));
+      }
+      setSellShopee(produto.sell_shopee || false);
+      setSellMercadoLivre(produto.sell_mercado_livre || false);
+      setValorVendaShopee(formatarMoeda(produto.sale_price_shopee));
+      setValorVendaMercadoLivre(formatarMoeda(produto.sale_price_mercado_livre));
+      setPorcentagemLucro(formatarPorcentagem(produto.default_profit_margin));
+      setPorcentagemLucroLojaVirtual(formatarPorcentagem(produto.profit_margin_virtual_shop));
+      setPorcentagemLucroShopee(formatarPorcentagem(produto.profit_margin_shopee));
+      setPorcentagemLucroMercadoLivre(formatarPorcentagem(produto.profit_margin_mercado_livre));
+      setManagesStock(produto.manages_stock || false);
+      setSellOnline(produto.sell_online || false);
+      setQuantity(produto.quantity || 0);
+      setComposition(produto.is_composition || false);
+      setValorVendaLojaVirtual(formatarMoeda(produto.sale_price_virtual_store));
 
       // Busca as imagens do produto
       const { data: imagensData, error: imagensError } = await supabase
@@ -190,12 +218,21 @@ export default function EditarProdutoPage() {
           description: descricao,
           barcode: codigoBarras,
           sku: sku,
-          cost_price: parseMoeda(valorCompra),
-          sale_price: parseMoeda(valorVenda),
+          cost_price: abaAtiva === 'simples' ? parseMoeda(valorCompra) : valorCompraComposto,
+          sale_price: abaAtiva === 'simples' ? parseMoeda(valorVenda) : parseMoeda(valorVendaComposto),
           manages_stock: managesStock,
           sell_online: sellOnline,
           quantity: quantity,
-          is_composition: isComposition,
+          is_composition: abaAtiva === 'composto',
+          sell_shopee: sellShopee,
+          sell_mercado_livre: sellMercadoLivre,
+          sale_price_virtual_store: parseMoeda(valorVendaLojaVirtual),
+          sale_price_shopee: parseMoeda(valorVendaShopee),
+          sale_price_mercado_livre: parseMoeda(valorVendaMercadoLivre),
+          default_profit_margin: (porcentagemLucro.replace('%','').replace(',', '.')),
+          profit_margin_virtual_shop: (porcentagemLucroLojaVirtual.replace('%','').replace(',', '.')),
+          profit_margin_shopee: (porcentagemLucroShopee.replace('%','').replace(',', '.')),
+          profit_margin_mercado_livre: (porcentagemLucroMercadoLivre.replace('%','').replace(',', '.')),
         })
         .eq('id', id);
 
@@ -288,9 +325,7 @@ export default function EditarProdutoPage() {
 
 
   };
-  
-  // O restante do código (funções de cálculo, manipulação de imagens, etc.) pode ser reutilizado da tela de criação.  
-    
+      
     useEffect(() => {
       const fetchCategorias = async () => {
         const { data, error } = await supabase
@@ -307,42 +342,122 @@ export default function EditarProdutoPage() {
       fetchCategorias();
     }, []);
   
-    const calcularValorVenda = (valorCompra: string, porcentagemLucro: string) => {
+    const calcularValorVenda = (valorCompra: string, porcentagemLucro: string, field?: string) => {
       const valorCompraNumerico = parseMoeda(valorCompra);
       const porcentagemNumerica = parseFloat(porcentagemLucro.replace(',', '.'));
+  
       if (isNaN(valorCompraNumerico) || isNaN(porcentagemNumerica)) {
         setValorVenda('');
         return;
       }
-  
       const lucro = valorCompraNumerico * (porcentagemNumerica / 100);
       const valorVendaCalculado = valorCompraNumerico + lucro;
+  
+      switch (field) {
+        case 'lojaVirtual':
+          setValorVendaLojaVirtual(formatarMoeda(valorVendaCalculado));
+          break;
+        case 'shopee':
+          setValorVendaShopee(formatarMoeda(valorVendaCalculado));
+          break;
+        case 'mercadoLivre':
+          setValorVendaMercadoLivre(formatarMoeda(valorVendaCalculado));
+          break;
+        default:
       setValorVenda(formatarMoeda(valorVendaCalculado));
     };
-
-    const getPorcentagemLucro = (valorCompra: string, valorVenda: string) => {
-      const valorCompraNumerico = parseFloat(valorCompra);
-      const valorVendaNumerico = parseFloat(valorVenda);
-
-      if (isNaN(valorCompraNumerico) || isNaN(valorVendaNumerico)) {
-        return '';
+  }
+  
+    const calcularValorVendaComposto = (porcentagem: string, field?: string) => {
+      const totalValorVendaComposto = componentes.reduce((acc, componente) => {
+        return acc + componente.product.sale_price * componente.quantity;
+      }, 0);
+  
+      const porcentagemLucro = parseFloat(porcentagem.replace('%', '').replace(',', '.'));
+  
+      if (isNaN(totalValorVendaComposto) || isNaN(porcentagemLucro)) {
+        setValorVendaLojaVirtual('');
+        return;
       }
   
-      const lucro = valorVendaNumerico - valorCompraNumerico;
-      const porcentagemLucroCalculada = ((lucro / valorCompraNumerico) * 100);
-      return formatarPorcentagem(porcentagemLucroCalculada);
+      const valorCustoEquivalente = totalValorVendaComposto/2;
+  
+      const lucro = valorCustoEquivalente * (porcentagemLucro / 100);
+      const valorVendaCalculado = valorCustoEquivalente + lucro;
+  
+      switch (field) {  
+        case 'lojaVirtual':
+          setValorVendaLojaVirtual(formatarMoeda(valorVendaCalculado));
+          break;
+        case 'shopee':
+          setValorVendaShopee(formatarMoeda(valorVendaCalculado));
+          break;
+        case 'mercadoLivre':
+          setValorVendaMercadoLivre(formatarMoeda(valorVendaCalculado));
+          break;
+        default:
+          setValorVendaComposto(formatarMoeda(valorVendaCalculado));
+      }
     };
-
-    const calcularPorcentagemLucro = (valorVenda: string, valorCompra: string) => {
-      const valorCompraNumerico = parseMoedaCalculoPorcentagem(valorCompra);
-      const valorVendaNumerico = parseMoedaCalculoPorcentagem(valorVenda);
+  
+    const calcularPorcentagemLucro = (valorVenda: string, valorCompra: string, field?: string) => {
+      const valorCompraNumerico = parseMoeda(valorCompra);
+      const valorVendaNumerico = parseMoeda(valorVenda);
+  
+      console.log("valorCompraNumerico: ", valorCompraNumerico);
+      console.log("valorVendaNumerico: ", valorVendaNumerico);
+      console.log("field: ", field);
+    
       if (isNaN(valorCompraNumerico) || isNaN(valorVendaNumerico)) {
         setPorcentagemLucro('');
         return;
       }
       const lucro = valorVendaNumerico - valorCompraNumerico;
       const porcentagemLucroCalculada = (lucro / valorCompraNumerico) * 100;
-      setPorcentagemLucro(formatarPorcentagem(porcentagemLucroCalculada));
+      
+      switch (field) {
+        case 'lojaVirtual':
+          setPorcentagemLucroLojaVirtual(formatarPorcentagem(porcentagemLucroCalculada));
+          break;
+        case 'shopee':
+          setPorcentagemLucroShopee(formatarPorcentagem(porcentagemLucroCalculada));
+          break;
+        case 'mercadoLivre':
+          setPorcentagemLucroMercadoLivre(formatarPorcentagem(porcentagemLucroCalculada));
+          break;
+        default:
+          setPorcentagemLucro(formatarPorcentagem(porcentagemLucroCalculada));
+      }
+    };
+    
+    const calcularPorcentagemLucroComposto = (valorVenda: string, field?: string) => {
+    
+      const totalValorVendaComposto = componentes.reduce((acc, componente) => {
+        return acc + componente.product.sale_price * componente.quantity;
+      }, 0);
+    
+      const valorVendaNumerico = parseMoeda(valorVenda);
+    
+      if(isNaN(valorVendaNumerico) || isNaN(totalValorVendaComposto)){
+        setPorcentagemLucro('');
+        return;
+      }
+    
+      const porcentagemLucroCalculada = 100 * valorVendaNumerico / totalValorVendaComposto;
+    
+      switch (field) {
+        case 'lojaVirtual':
+          setPorcentagemLucroLojaVirtual(formatarPorcentagem(porcentagemLucroCalculada));
+          break;
+        case 'shopee':
+          setPorcentagemLucroShopee(formatarPorcentagem(porcentagemLucroCalculada));
+          break;
+        case 'mercadoLivre':
+          setPorcentagemLucroMercadoLivre(formatarPorcentagem(porcentagemLucroCalculada));
+          break;
+        default:
+          setPorcentagemLucro(formatarPorcentagem(porcentagemLucroCalculada));
+      }
     }
   
     const handleImagemChange = async (index: number, file: File | null) => {
@@ -429,10 +544,27 @@ export default function EditarProdutoPage() {
   };
     
   const calcularValorCompra = (componentes: ComponentProduct[]) => {
-    const total = componentes.reduce((acc, componente) => {
+    const totalValorCompraComposto = componentes.reduce((acc, componente) => {
       return acc + componente.product.cost_price * componente.quantity;
     }, 0);
-    setValorVendaComposto(formatarMoeda(total)); // Atualiza o valor de venda do produto composto
+    setValorCompraComposto(totalValorCompraComposto); // Atualiza o valor de compra do produto composto
+    
+    const totalValorVendaComposto = componentes.reduce((acc, componente) => {
+      return acc + componente.product.sale_price * componente.quantity;
+    }, 0);
+    setValorVendaComposto(formatarMoeda(totalValorVendaComposto)); // Atualiza o valor de venda do produto composto
+    
+    const valorCustoEquivalente = totalValorVendaComposto/2;
+  
+    setValorVendaLojaVirtual(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroLojaVirtual.replace('%','')) / 100)))); // Atualiza o valor de venda da loja virtual
+    setValorVendaShopee(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroShopee.replace('%','')) / 100)))); // Atualiza o valor de venda do Shopee
+    setValorVendaMercadoLivre(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroMercadoLivre.replace('%','')) / 100)))); // Atualiza o valor de venda do Mercado Livre
+  };
+
+  const removerProduto = (id: string) => {
+    const novosComponentes = componentes.filter((c) => c.product.id !== id);
+    setComponentes(novosComponentes);
+    calcularValorCompra(novosComponentes);
   };
   
     const buscarProdutos = async (termo: string) => {
@@ -445,13 +577,26 @@ export default function EditarProdutoPage() {
         .from('products')
         .select(`
           id,
-          name,
-          description,
-          barcode,
-          sku,
-          cost_price,
-          sale_price,
-          product_images (image_url)
+        name,
+        description,
+        barcode,
+        sku,
+        cost_price,
+        sale_price,
+        product_images (image_url),
+        sell_shopee,
+        sell_mercado_livre,
+        sale_price_shopee,
+        sale_price_mercado_livre,
+        default_profit_margin,
+        profit_margin_virtual_shop,
+        profit_margin_shopee,
+        profit_margin_mercado_livre,
+        manages_stock,
+        sell_online,
+        quantity,
+        is_composition,
+        sale_price_virtual_store
         `)
         .or(`barcode.ilike.%${termo}%,sku.ilike.%${termo}%,description.ilike.%${termo}%`)
         .neq('is_composition', true)  // Adiciona a condição onde is_composition não é true
@@ -469,49 +614,68 @@ export default function EditarProdutoPage() {
           sku: produto.sku,
           cost_price: produto.cost_price,
           sale_price: produto.sale_price,
-          image_url: produto.product_images[0]?.image_url || null, // Pega a primeira imagem ou null
-          manages_stock: false, // Default value or fetch from API if available
-          sell_online: false, // Default value or fetch from API if available
-          quantity: 0, // Default value or fetch from API if available
-          is_composition: false, // Default value or fetch from API if available
+          image_url: produto.product_images[0]?.image_url || null,
+          sell_shopee: produto.sell_shopee,
+          sell_mercado_livre: produto.sell_mercado_livre,
+          sale_price_shopee: produto.sale_price_shopee,
+          sale_price_mercado_livre: produto.sale_price_mercado_livre,
+          default_profit_margin: produto.default_profit_margin,
+          profit_margin_virtual_shop: produto.profit_margin_virtual_shop,
+          profit_margin_shopee: produto.profit_margin_shopee,
+          profit_margin_mercado_livre: produto.profit_margin_mercado_livre,
+          manages_stock: produto.manages_stock,
+          sell_online: produto.sell_online,
+          quantity: produto.quantity,
+          is_composition: produto.is_composition,
+          sale_price_virtual_store: produto.sale_price_virtual_store
         }));
         setResultadosPesquisa(produtosComImagem);
       }
     };
   
     
-    // Função para abrir a câmera e escanear o código de barras
-    const abrirCameraParaScanner = () => {
-      setMostrarScanner(true);
-    };
+     // Função para abrir a câmera e escanear o código de barras
+  const abrirCameraParaScanner = () => {
+    setMostrarScanner(true);
+  };
 
-    const handleScan = (result: string) => {
-      setCodigoBarras(result);
-      setMostrarScanner(false);
-    };
+  const handleScan = (result: string) => {
+    setTimeout(() => {
+      scannerModalRef.current?.stopScanner();
+    }, 100);
+    setCodigoBarras(result);
+    setMostrarScanner(false);
+    
+  };
+  
 
-    const handleScannerError = (error: string) => {
-      console.error('Erro no scanner:', error);
-    };
+  const handleScannerError = (error: string) => {
+    console.error('Erro no scanner:', error);
+  };
 
-    const handleInputBlur = () => {
-      if (scannerModalRef.current) {
-        scannerModalRef.current.stopScanner();
-      }
-    };
+  const handleInputBlur = () => {
+    if (scannerModalRef.current) {
+      scannerModalRef.current.stopScanner();
+    }
+  };
 
-    const abrirCameraParaScannerComposto = () => {
-      setMostrarScannerComposto(true);
-    };
+  const abrirCameraParaScannerAddProduto = () => {
+    setMostrarScannerAddProduto(true);
+  };
 
-    const handleScanComposto = (result: string) => {
-      setTermoPesquisa(result);
-      setMostrarScannerComposto(false);
-    };
+  const handleScanAddProduto = (result: string) => {
+    setTimeout(() => {
+      scannerModalRef.current?.stopScanner();
+    }, 100);
+    setTermoPesquisa(result);
+    buscarProdutos(result);
+    setMostrarScannerAddProduto(false);
+    
+  };
 
-    const handleScannerErrorComposto = (error: string) => {
-      console.error('Erro no scanner:', error);
-    };
+  const handleScannerErrorAddProduto = (error: string) => {
+    console.error('Erro no scanner:', error);
+  };
 
   return (
     <div className="min-h-screen p-6">
@@ -535,7 +699,6 @@ export default function EditarProdutoPage() {
       </div>
       <h1 className="text-2xl font-bold mb-6 text-white">Editar Produto</h1>
 
-      {/* O restante do código (campos de formulário, botões, etc.) pode ser reutilizado da tela de criação. */}
       <div className="space-y-4">
         {/* Campo para upload de imagens */}
         <div>
@@ -636,16 +799,6 @@ export default function EditarProdutoPage() {
           </div>
         </div>
       )}
-
-
-        {uploadComplete && (
-          <div className="mt-2 flex items-center text-green-500 text-sm">
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            Upload concluído com sucesso!
-          </div>
-        )}
 
         {/* Campo Categoria (Multiselect) */}
         <div>
@@ -789,7 +942,7 @@ export default function EditarProdutoPage() {
                 className="w-full p-2 pl-4 pr-10 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
               />
               <button
-                onClick={abrirCameraParaScannerComposto}
+                onClick={abrirCameraParaScannerAddProduto}
                 className="absolute right-0 top-0 h-full px-3 flex items-center justify-center text-gray-400 hover:text-blue-500"
               >
                 {/* Ícone de código de barras */}
@@ -821,6 +974,7 @@ export default function EditarProdutoPage() {
                       <p className="text-gray-300">{produto.description}</p>
                       <p className="text-sm text-gray-400">Código: {produto.barcode}</p>
                       <p className="text-sm text-gray-400">SKU: {produto.sku}</p>
+                      <p className="text-sm text-gray-400">Valor: {formatarMoeda(produto.sale_price)}</p>
                     </div>
                     <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-gray-700">
                       {produto.image_url ? (
@@ -860,7 +1014,7 @@ export default function EditarProdutoPage() {
                     <span className="text-gray-300">{componente.product.description}</span>
                   </div>
 
-                  {/* Quantidade */}
+                  {/* Quantidade, valor e botão de remover */}
                   <div className="flex items-center gap-4">
                     <input
                       type="number"
@@ -877,11 +1031,25 @@ export default function EditarProdutoPage() {
                       className="w-20 p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
                     />
                     <span className="text-gray-300">
-                      R$ {(componente.product.cost_price * componente.quantity).toFixed(2)}
+                      {formatarMoeda((componente.product.sale_price * componente.quantity))}
                     </span>
+                    <button
+                      onClick={() => removerProduto(componente.product.id)}
+                      className="text-red-500 hover:text-red-600"
+                    >
+                      Remover
+                    </button>
                   </div>
                 </div>
               ))}
+                <div className="mt-4 flex justify-between">
+                <label className="block text-sm font-medium text-gray-300">
+                  Total: {componentes.reduce((acc, componente) => acc + componente.quantity, 0)} itens
+                </label>
+                <label className="block text-sm font-medium text-gray-300">
+                  Valor Total: {formatarMoeda(componentes.reduce((acc, componente) => acc + (componente.product.sale_price * componente.quantity), 0))}
+                </label>
+                </div>
             </div>
           </div>
         </>
@@ -897,14 +1065,17 @@ export default function EditarProdutoPage() {
                 onChange={(e) => {
                   setValorCompra(formatarMoeda(e.target.value));
                   calcularValorVenda(e.target.value, porcentagemLucro);
+                  calcularValorVenda(e.target.value, porcentagemLucroLojaVirtual, 'lojaVirtual');
+                  calcularValorVenda(e.target.value, porcentagemLucroShopee, 'shopee');
+                  calcularValorVenda(e.target.value, porcentagemLucroMercadoLivre, 'mercadoLivre');
                 }}
                 className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
               />
             </div>
           )}
 
-        {/* Campo Porcentagem de Lucro (Produto Simples) */}
-        {abaAtiva === 'simples' && (
+         {/* Campo Porcentagem de Lucro (Produto Simples) */}
+         {abaAtiva === 'simples' && (
           <div className="flex justify-between mt-2">
             <div>
               <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
@@ -935,20 +1106,49 @@ export default function EditarProdutoPage() {
           </div>
         )}
 
-        
-
-        {/* Campo Valor de Venda (Produto Composto) */}
+        {/* Campo Valor de Compra (Produto composto) */}
         {abaAtiva === 'composto' && (
           <div>
-            <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+            <label className="block text-sm font-medium text-gray-300">Valor de Compra</label>
             <input
               type="text"
-              value={valorVendaComposto}
-              onChange={(e) => {
-                setValorVendaComposto(formatarMoeda(e.target.value));
-              }}
+              value={formatarMoeda(valorCompraComposto)}
+              readOnly
               className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
             />
+          </div>
+        )}
+
+
+         {/* Campo Porcentagem de Lucro (Produto composto) */}
+         {abaAtiva === 'composto' && (
+          <div className="flex justify-between mt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+              <input
+                type="text"
+                value={porcentagemLucro}
+                onChange={(e) => {
+                  setPorcentagemLucro(e.target.value);
+                  calcularValorVendaComposto(e.target.value);
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
+
+            {/* Campo Valor de Venda (Produto composto) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+              <input
+                type="text"
+                value={valorVendaComposto}
+                onChange={(e) => {
+                  setValorVendaComposto(formatarMoeda(e.target.value));
+                  calcularPorcentagemLucroComposto(e.target.value);
+                }}
+                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+            </div>
           </div>
         )}
 
@@ -964,155 +1164,257 @@ export default function EditarProdutoPage() {
         </div>
 
         {/* Campos Controla Estoque e Vender Online */}
-        <div className="flex justify-between">
-          {/* Campo Controla Estoque */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              checked={managesStock}
-              onChange={(e) => setManagesStock(e.target.checked)}
-              className="mr-2"
-            />
-            <label className="text-sm font-medium text-gray-300">Controla Estoque</label>
-          </div>
+                <div className="flex justify-between">
+                  {/* Campo Controla Estoque */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={managesStock}
+                      onChange={(e) => setManagesStock(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <label className="text-sm font-medium text-gray-300">Controla Estoque</label>
+                  </div>
+        
+                  {/* Campo Vender Online */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={sellOnline}
+                      onChange={(e) => setSellOnline(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <label className="text-sm font-medium text-gray-300">Loja Virtual</label>
+                  </div>
+                </div>
+        
+                <div className="flex justify-between">
+                  {/* Campo Vender Shopee */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={sellShopee}
+                      onChange={(e) => setSellShopee(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <label className="text-sm font-medium text-gray-300">Shopee</label>
+                  </div>
+        
+                  {/* Campo Vender Mercado Livre */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={sellMercadoLivre}
+                      onChange={(e) => setSellMercadoLivre(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <label className="text-sm font-medium text-gray-300">Mercado Livre</label>
+                  </div>
+                </div>
+        
+                {/* Campos porcentagem e valor Loja Virtual - Simples*/}
+                {abaAtiva === 'simples' && sellOnline && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Loja Virtual</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroLojaVirtual}
+                        onChange={(e) => {
+                          setPorcentagemLucroLojaVirtual(e.target.value);
+                          calcularValorVenda(valorCompra, e.target.value, 'lojaVirtual');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaLojaVirtual}
+                        onChange={(e) => {
+                          setValorVendaLojaVirtual(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucro(e.target.value, valorCompra, 'lojaVirtual');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
 
-          {/* Campo Vender Online */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              checked={sellOnline}
-              onChange={(e) => setSellOnline(e.target.checked)}
-              className="mr-2"
-            />
-            <label className="text-sm font-medium text-gray-300">Loja Virtual</label>
-          </div>
-        </div>
+                {/* Campos porcentagem e valor Loja Virtual - Composto*/}
+                {abaAtiva === 'composto' && sellOnline && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Loja Virtual</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroLojaVirtual}
+                        onChange={(e) => {
+                          setPorcentagemLucroLojaVirtual(e.target.value);
+                          calcularValorVendaComposto(e.target.value, 'lojaVirtual');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaLojaVirtual}
+                        onChange={(e) => {
+                          setValorVendaLojaVirtual(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucroComposto(e.target.value, 'lojaVirtual');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
+        
+                {/* Campos porcentagem e valor Shopee - Simples*/}
+                {abaAtiva == 'simples' && sellShopee && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Shopee</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroShopee}
+                        onChange={(e) => {
+                          setPorcentagemLucroShopee(e.target.value);
+                          calcularValorVenda(valorCompra, e.target.value, 'shopee');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaShopee}
+                        onChange={(e) => {
+                          setValorVendaShopee(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucro(e.target.value, valorCompra, 'shopee');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
 
-        <div className="flex justify-between">
-          {/* Campo Vender Shopee */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              checked={sellShopee}
-              onChange={(e) => setSellShopee(e.target.checked)}
-              className="mr-2"
-            />
-            <label className="text-sm font-medium text-gray-300">Shopee</label>
-          </div>
+                {/* Campos porcentagem e valor Shopee - Composto*/}
+                {abaAtiva == 'composto' && sellShopee && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Shopee</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroShopee}
+                        onChange={(e) => {
+                          setPorcentagemLucroShopee(e.target.value);
+                          calcularValorVendaComposto(e.target.value, 'shopee');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaShopee}
+                        onChange={(e) => {
+                          setValorVendaShopee(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucroComposto(e.target.value, 'shopee');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
+        
+                {/* Campos porcentagem e valor Mercado livre - Simples*/}
+                {abaAtiva == 'simples' && sellMercadoLivre && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Mercado livre</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroMercadoLivre}
+                        onChange={(e) => {
+                          setPorcentagemLucroMercadoLivre(e.target.value);
+                          calcularValorVenda(valorCompra, e.target.value, 'mercadoLivre');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaMercadoLivre}
+                        onChange={(e) => {
+                          setValorVendaMercadoLivre(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucro(e.target.value, valorCompra, 'mercadoLivre');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
 
-          {/* Campo Vender Mercado Livre */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              checked={sellMercadoLivre}
-              onChange={(e) => setSellMercadoLivre(e.target.checked)}
-              className="mr-2"
-            />
-            <label className="text-sm font-medium text-gray-300">Mercado Livre</label>
-          </div>
-        </div>
-
-        {/* Campos porcentagem e valor Venda Online */}
-        {sellOnline && (
-          <div>
-          <label className="block text-lg font-medium text-gray-300">Valores Loja Virtual</label>
-          <div className="flex justify-between mt-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
-              <input
-                type="text"
-                value={porcentagemLucro}
-                onChange={(e) => {
-                  setPorcentagemLucro(e.target.value);
-                  calcularValorVenda(valorCompra, e.target.value);
-                }}
-                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
-              <input
-                type="text"
-                value={valorVenda}
-                onChange={(e) => {
-                  calcularPorcentagemLucro(e.target.value, valorCompra);
-                  setValorVenda(formatarMoeda(e.target.value));
-                }}
-                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-              />
-            </div>
-          </div>
-        </div>
-        )}
-
-        {/* Campos porcentagem e valor Shopee */}
-        {sellShopee && (
-          <div>
-          <label className="block text-lg font-medium text-gray-300">Valores Shopee</label>
-          <div className="flex justify-between mt-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
-              <input
-                type="text"
-                value={porcentagemLucro}
-                onChange={(e) => {
-                  setPorcentagemLucro(e.target.value);
-                  calcularValorVenda(valorCompra, e.target.value);
-                }}
-                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
-              <input
-                type="text"
-                value={valorVenda}
-                onChange={(e) => {
-                  calcularPorcentagemLucro(e.target.value, valorCompra);
-                  setValorVenda(formatarMoeda(e.target.value));
-                }}
-                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-              />
-            </div>
-          </div>
-        </div>
-        )}
-
-        {/* Campos porcentagem e valor Mercado livre */}
-        {sellMercadoLivre && (
-          <div>
-          <label className="block text-lg font-medium text-gray-300">Valores Mercado livre</label>
-          <div className="flex justify-between mt-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
-              <input
-                type="text"
-                value={porcentagemLucro}
-                onChange={(e) => {
-                  setPorcentagemLucro(e.target.value);
-                  calcularValorVenda(valorCompra, e.target.value);
-                }}
-                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
-              <input
-                type="text"
-                value={valorVenda}
-                onChange={(e) => {
-                  calcularPorcentagemLucro(e.target.value, valorCompra);
-                  setValorVenda(formatarMoeda(e.target.value));
-                }}
-                className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-              />
-            </div>
-          </div>
-        </div>
-        )}
+                {/* Campos porcentagem e valor Mercado livre - Composto*/}
+                {abaAtiva == 'composto' && sellMercadoLivre && (
+                  <div>
+                  <label className="block text-lg font-medium text-gray-300">Valores Mercado livre</label>
+                  <div className="flex justify-between mt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <input
+                        type="text"
+                        value={porcentagemLucroMercadoLivre}
+                        onChange={(e) => {
+                          setPorcentagemLucroMercadoLivre(e.target.value);
+                          calcularValorVendaComposto(e.target.value, 'mercadoLivre');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+        
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                      <input
+                        type="text"
+                        value={valorVendaMercadoLivre}
+                        onChange={(e) => {
+                          setValorVendaMercadoLivre(formatarMoeda(e.target.value));
+                          calcularPorcentagemLucroComposto(e.target.value, 'mercadoLivre');
+                        }}
+                        className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
 
        {/* Botão de Voltar no canto inferior esquerdo */}
       <button
@@ -1139,43 +1441,31 @@ export default function EditarProdutoPage() {
         <div className="flex justify-end">
           <button
             onClick={salvarAlteracoes}
-            disabled={isLoading}
+            disabled={loading}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-400"
           >
-            {isLoading ? 'Salvando...' : 'Salvar'}
-          </button>          
-
-        {abaAtiva === 'simples' && (
-          <div>
-            {mostrarScanner && (
-              <BarcodeScannerModal
-                ref={scannerModalRef}
-                onScan={handleScan}
-                onError={handleScannerError}
-                onClose={() => {
-                  setMostrarScanner(false);
-                }}
-              />
-            )}
-          </div>
-        )}
-
-        {abaAtiva === 'composto' && (
-          <div>
-            {mostrarScannerComposto && (
+            {loading ? 'Salvando alterações...' : 'Salvar alterações'}
+          </button>
+          {mostrarScanner && (
             <BarcodeScannerModal
               ref={scannerModalRef}
-                onScan={handleScanComposto}
-                onError={handleScannerErrorComposto}
-                onClose={() => {
-                setMostrarScannerComposto(false);
-                scannerModalRef.current?.stopScanner();
-                }}
-                />
+              onScan={handleScan}
+              onError={handleScannerError}
+              onClose={() => {
+                setMostrarScanner(false);
+              }}
+            />
           )}
-          </div>
-        )}
-
+          {abaAtiva == 'composto' && mostrarScannerAddProduto && (
+            <BarcodeScannerModal
+              ref={scannerModalRef}
+              onScan={handleScanAddProduto}
+              onError={handleScannerErrorAddProduto}
+              onClose={() => {
+                setMostrarScannerAddProduto(false);
+              }}
+            />
+            )}
         </div>
       </div>
     </div>

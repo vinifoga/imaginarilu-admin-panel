@@ -31,6 +31,11 @@ interface Product {
   profit_margin_virtual_shop: number;
   profit_margin_shopee: number;
   profit_margin_mercado_livre: number;
+  manages_stock: boolean;
+  sell_online: boolean;
+  quantity: number;
+  is_composition: boolean;
+  sale_price_virtual_store: number;
 }
 
 interface ComponentProduct {
@@ -352,27 +357,7 @@ export default function NovoProdutoPage() {
   }
 
   try {
-    // Salvar o produto
-    console.log("ANTES DE SALVAR PRODUTO");
-    console.log("name: ", nome);
-    console.log("description: ", descricao);  
-    console.log("barcode: ", codigoBarras);
-    console.log("sku: ", sku);
-    console.log("cost_price: ", abaAtiva === 'simples' ? parseMoeda(valorCompra) : valorCompraComposto);
-    console.log("sale_price: ", abaAtiva === 'simples' ? parseMoeda(valorVenda) : parseMoeda(valorVendaComposto));
-    console.log("manages_stock: ", managesStock);
-    console.log("sell_online: ", sellOnline);
-    console.log("quantity: ", quantity);
-    console.log("sell_shopee: ", sellShopee);
-    console.log("sell_mercado_livre: ", sellMercadoLivre);
-    console.log("sale_price_shopee: ", parseMoeda(valorVendaShopee));
-    console.log("sale_price_mercado_livre: ", parseMoeda(valorVendaMercadoLivre));
-    console.log("default_profit_margin: ", (porcentagemLucro.replace('%','').replace(',', '.')),);
-    console.log("profit_margin_virtual_shop: ", (porcentagemLucroLojaVirtual.replace('%','').replace(',', '.')),);
-    console.log("profit_margin_shopee: ", (porcentagemLucroShopee.replace('%','').replace(',', '.')),);
-    console.log("profit_margin_mercado_livre: ", (porcentagemLucroMercadoLivre.replace('%','').replace(',', '.')),);
-    console.log("DEPOIS DE SALVAR PRODUTO");
-
+    // Salvar produto
     const { data: produto, error: produtoError } = await supabase
       .from('products')
       .insert([
@@ -428,6 +413,24 @@ export default function NovoProdutoPage() {
       category_id: categoria.id,
     }));
 
+    if(produto[0].is_composition){
+      // Salvar produtos da composicao
+    const produtosDaComposicao = componentes.map((produto) => ({
+      parent_product_id: produtoId,
+      component_product_id: produto.product.id,
+      quantity: produto.quantity
+    }));
+
+    const { error: composicaoError } = await supabase
+      .from('product_components')
+      .insert(produtosDaComposicao);
+
+    if (composicaoError) {
+      console.error('Erro ao salvar produtos da composicao:', composicaoError);
+      alert('Erro ao salvar produtos da composicao. Tente novamente.');
+    } 
+  }
+
     const { error: categoriasError } = await supabase
       .from('product_categories')
       .insert(categoriasParaSalvar);
@@ -439,6 +442,7 @@ export default function NovoProdutoPage() {
       console.log('Produto, imagens e categorias salvas com sucesso!');
       router.push('/dashboard/produtos');
     }
+
   } catch (error) {
     console.error('Erro inesperado ao salvar produto:', error);
     alert('Erro inesperado ao salvar produto. Tente novamente.');
@@ -510,7 +514,12 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
         default_profit_margin,
         profit_margin_virtual_shop,
         profit_margin_shopee,
-        profit_margin_mercado_livre
+        profit_margin_mercado_livre,
+        manages_stock,
+        sell_online,
+        quantity,
+        is_composition,
+        sale_price_virtual_store
       `)
       .or(`barcode.ilike.%${termo}%,sku.ilike.%${termo}%,description.ilike.%${termo}%`)
       .neq('is_composition', true)  // Adiciona a condição onde is_composition não é true
@@ -536,6 +545,11 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
         profit_margin_virtual_shop: produto.profit_margin_virtual_shop,
         profit_margin_shopee: produto.profit_margin_shopee,
         profit_margin_mercado_livre: produto.profit_margin_mercado_livre,
+        manages_stock: produto.manages_stock,
+        sell_online: produto.sell_online,
+        quantity: produto.quantity,
+        is_composition: produto.is_composition,
+        sale_price_virtual_store: produto.sale_price_virtual_store
       }));
       setResultadosPesquisa(produtosComImagem);
     }
@@ -608,7 +622,6 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
       <h1 className="text-2xl font-bold mb-6 text-white">Novo Produto</h1>
 
       <div className="space-y-4">
-        {/* Campo para upload de imagens */}
         {/* Campo para upload de imagens */}
         <div>
           <label className="block text-sm font-medium text-gray-300">Imagens do Produto</label>
@@ -798,7 +811,6 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
               type="text"
               value={codigoBarras}
               onChange={(e) => setCodigoBarras(e.target.value)}
-              onFocus={() => setCodigoBarras("")}
               onBlur={handleInputBlur}
               className="mt-1 block w-full p-2 pl-4 pr-10 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
             />
