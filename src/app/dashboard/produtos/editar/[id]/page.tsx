@@ -1043,12 +1043,12 @@ export default function EditarProdutoPage() {
                 </div>
               ))}
                 <div className="mt-4 flex justify-between">
-                <label className="block text-sm font-medium text-gray-300">
-                  Total: {componentes.reduce((acc, componente) => acc + componente.quantity, 0)} itens
-                </label>
-                <label className="block text-sm font-medium text-gray-300">
-                  Valor Total: {formatarMoeda(componentes.reduce((acc, componente) => acc + (componente.product.sale_price * componente.quantity), 0))}
-                </label>
+                  <label className="block text-sm font-medium text-gray-400">
+                    Total: {componentes.reduce((acc, componente) => acc + componente.quantity, 0)} itens
+                  </label>
+                  <label className="block text-sm font-medium text-gray-400">
+                    Valor Total: {formatarMoeda(componentes.reduce((acc, componente) => acc + (componente.product.sale_price * componente.quantity), 0))}
+                  </label>
                 </div>
             </div>
           </div>

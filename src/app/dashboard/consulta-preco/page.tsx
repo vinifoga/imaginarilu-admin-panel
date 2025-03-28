@@ -317,10 +317,10 @@ export default function ConsultaPrecoPage() {
                               </li>
                             ))}
                             <div className="mt-4 flex justify-between">
-                              <label className="block text-sm font-medium text-gray-300">
+                              <label className="block text-sm font-medium text-gray-400">
                                 {componentes.reduce((acc, componente) => acc + componente.quantity, 0)} itens
                               </label>
-                              <label className="block text-sm font-medium text-gray-300">
+                              <label className="block text-sm font-medium text-gray-400">
                                 {(() => {
                                   const total = componentes.reduce((acc, componente) => {
                                     if (componente.product) {
