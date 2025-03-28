@@ -35,7 +35,7 @@ export default function DashboardPage() {
       label: 'Consulta de Preço'
     },
     {
-      path: '/dashboard/vender',
+      path: '/dashboard/vendas',
       icon: <FiShoppingCart className="text-lg" />,
       label: 'Vender'
     },
