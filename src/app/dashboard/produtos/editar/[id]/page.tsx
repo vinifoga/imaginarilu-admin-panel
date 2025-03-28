@@ -678,7 +678,7 @@ export default function EditarProdutoPage() {
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-6 bg-gray-900 text-white">
       <div className="flex gap-4 mb-6">
         <button
           onClick={() => setAbaAtiva('simples')}
@@ -1419,7 +1419,7 @@ export default function EditarProdutoPage() {
        {/* Botão de Voltar no canto inferior esquerdo */}
       <button
         onClick={() => router.push('/dashboard/produtos')}
-        className="fixed bottom-0 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+        className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

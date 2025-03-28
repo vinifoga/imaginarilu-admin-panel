@@ -600,7 +600,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
 
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-6 bg-gray-900 text-white">
       <div className="flex gap-4 mb-6">
         <button
           onClick={() => setAbaAtiva('simples')}

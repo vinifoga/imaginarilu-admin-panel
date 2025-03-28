@@ -48,7 +48,7 @@ export default function EditarCategoriaPage() {
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-6 bg-gray-900 text-white">
       <h1 className="text-2xl font-bold mb-6 text-white">Editar Categoria</h1>
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">

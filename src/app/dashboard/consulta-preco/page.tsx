@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
 import { formatarMoeda } from '@/utils/moeda';
-import { FiPackage, FiSearch } from 'react-icons/fi';
+import { FiSearch } from 'react-icons/fi';
 import { useLoading } from '@/contexts/loading-context';
+import PlaceholderImage from '../../../../components/PlaceholderImage';
 
 interface Produto {
   id: string;
@@ -187,7 +188,7 @@ export default function ConsultaPrecoPage() {
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-6 bg-gray-900 text-white">
       <h1 className="text-2xl font-bold mb-6 text-white">Consulta de Preço</h1>
       
       {/* Formulário de pesquisa */}
@@ -235,10 +236,8 @@ export default function ConsultaPrecoPage() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="text-gray-400">
-                  <FiPackage size={64} />
-                </div>
-              )}
+              <PlaceholderImage /> // Usa o SVG como placeholder
+            )}
             </div>
 
             <div className="p-4 space-y-4">
@@ -378,7 +377,7 @@ export default function ConsultaPrecoPage() {
                       className="w-full h-full object-cover rounded-lg"
                     />
                   ) : (
-                    <FiPackage size={24} className="text-gray-400" />
+                    <PlaceholderImage /> // Usa o SVG como placeholder
                   )}
                 </div>
                 <div className="flex-1">
