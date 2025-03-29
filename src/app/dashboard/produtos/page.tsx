@@ -187,7 +187,38 @@ const produtosFiltrados = termoPesquisa
       <h1 className="text-2xl font-bold mb-6 text-white">Produtos</h1>
 
       {/* Container para o botão de filtro e o input de pesquisa */}
-      <div className="flex justify-center items-center mb-6 space-x-4">
+      <div className="flex flex-col justify-center items-center mb-6 space-y-4">
+        
+        {/* Input de pesquisa com ícone de leitor de código de barras */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Pesquisar"
+            value={termoPesquisa}
+            onChange={(e) => setTermoPesquisa(e.target.value)}
+            onBlur={handleInputBlur}
+            className="pl-4 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500"
+          />
+          <button
+            onClick={abrirCameraParaScanner}
+            className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-blue-600"
+          >
+            {/* Ícone de código de barras */}
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M4.4 3A1.4 1.4 0 0 0 3 4.4V6a1 1 0 0 1-2 0V4.4A3.4 3.4 0 0 1 4.4 1H6a1 1 0 0 1 0 2H4.4ZM17 2a1 1 0 0 1 1-1h1.6A3.4 3.4 0 0 1 23 4.4V6a1 1 0 1 1-2 0V4.4A1.4 1.4 0 0 0 19.6 3H18a1 1 0 0 1-1-1ZM2 17a1 1 0 0 1 1 1v1.6A1.4 1.4 0 0 0 4.4 21H6a1 1 0 1 1 0 2H4.4A3.4 3.4 0 0 1 1 19.6V18a1 1 0 0 1 1-1ZM22 17a1 1 0 0 1 1 1v1.6a3.4 3.4 0 0 1-3.4 3.4H18a1 1 0 1 1 0-2h1.6a1.4 1.4 0 0 0 1.4-1.4V18a1 1 0 0 1 1-1ZM18 8a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0V9a1 1 0 0 1 1-1ZM15 9a1 1 0 1 0-2 0v6a1 1 0 1 0 2 0V9ZM10 8a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0V9a1 1 0 0 1 1-1ZM7 9a1 1 0 1 0-2 0v6a1 1 0 1 0 2 0V9Z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+        </div>
+        
         {/* Botão de Filtro */}
         <div className="relative">
           <button
@@ -217,36 +248,6 @@ const produtosFiltrados = termoPesquisa
               ))}
             </div>
           )}
-        </div>
-
-        {/* Input de pesquisa com ícone de leitor de código de barras */}
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Pesquisar"
-            value={termoPesquisa}
-            onChange={(e) => setTermoPesquisa(e.target.value)}
-            onBlur={handleInputBlur}
-            className="pl-4 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500"
-          />
-          <button
-            onClick={abrirCameraParaScanner}
-            className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-blue-600"
-          >
-            {/* Ícone de código de barras */}
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M4.4 3A1.4 1.4 0 0 0 3 4.4V6a1 1 0 0 1-2 0V4.4A3.4 3.4 0 0 1 4.4 1H6a1 1 0 0 1 0 2H4.4ZM17 2a1 1 0 0 1 1-1h1.6A3.4 3.4 0 0 1 23 4.4V6a1 1 0 1 1-2 0V4.4A1.4 1.4 0 0 0 19.6 3H18a1 1 0 0 1-1-1ZM2 17a1 1 0 0 1 1 1v1.6A1.4 1.4 0 0 0 4.4 21H6a1 1 0 1 1 0 2H4.4A3.4 3.4 0 0 1 1 19.6V18a1 1 0 0 1 1-1ZM22 17a1 1 0 0 1 1 1v1.6a3.4 3.4 0 0 1-3.4 3.4H18a1 1 0 1 1 0-2h1.6a1.4 1.4 0 0 0 1.4-1.4V18a1 1 0 0 1 1-1ZM18 8a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0V9a1 1 0 0 1 1-1ZM15 9a1 1 0 1 0-2 0v6a1 1 0 1 0 2 0V9ZM10 8a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0V9a1 1 0 0 1 1-1ZM7 9a1 1 0 1 0-2 0v6a1 1 0 1 0 2 0V9Z"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
         </div>
       </div>
 

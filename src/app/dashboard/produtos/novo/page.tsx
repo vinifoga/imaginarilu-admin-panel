@@ -1000,7 +1000,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
          {abaAtiva === 'simples' && (
           <div className="flex justify-between mt-2">
             <div>
-              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+              <label className="block text-sm font-medium text-gray-300">Lucro (%)</label>
               <input
                 type="text"
                 value={porcentagemLucro}
@@ -1046,7 +1046,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
          {abaAtiva === 'composto' && (
           <div className="flex justify-between mt-2">
             <div>
-              <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+              <label className="block text-sm font-medium text-gray-300">Lucro (%)</label>
               <input
                 type="text"
                 value={porcentagemLucro}
@@ -1140,7 +1140,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                   <label className="block text-lg font-medium text-gray-300">Valores Loja Virtual</label>
                   <div className="flex justify-between mt-2">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <label className="block text-sm font-medium text-gray-300">Lucro (%)</label>
                       <input
                         type="text"
                         value={porcentagemLucroLojaVirtual}
@@ -1174,7 +1174,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                   <label className="block text-lg font-medium text-gray-300">Valores Loja Virtual</label>
                   <div className="flex justify-between mt-2">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <label className="block text-sm font-medium text-gray-300">Lucro (%)</label>
                       <input
                         type="text"
                         value={porcentagemLucroLojaVirtual}
@@ -1208,7 +1208,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                   <label className="block text-lg font-medium text-gray-300">Valores Shopee</label>
                   <div className="flex justify-between mt-2">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <label className="block text-sm font-medium text-gray-300">Lucro (%)</label>
                       <input
                         type="text"
                         value={porcentagemLucroShopee}
@@ -1242,7 +1242,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                   <label className="block text-lg font-medium text-gray-300">Valores Shopee</label>
                   <div className="flex justify-between mt-2">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <label className="block text-sm font-medium text-gray-300">Lucro (%)</label>
                       <input
                         type="text"
                         value={porcentagemLucroShopee}
@@ -1276,7 +1276,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                   <label className="block text-lg font-medium text-gray-300">Valores Mercado livre</label>
                   <div className="flex justify-between mt-2">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <label className="block text-sm font-medium text-gray-300">Lucro (%)</label>
                       <input
                         type="text"
                         value={porcentagemLucroMercadoLivre}
@@ -1310,7 +1310,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                   <label className="block text-lg font-medium text-gray-300">Valores Mercado livre</label>
                   <div className="flex justify-between mt-2">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Porcentagem de Lucro (%)</label>
+                      <label className="block text-sm font-medium text-gray-300">Lucro (%)</label>
                       <input
                         type="text"
                         value={porcentagemLucroMercadoLivre}
