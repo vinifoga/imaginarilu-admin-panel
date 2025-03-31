@@ -1,27 +1,23 @@
 // src/app/layout.tsx
-'use client';
+'use client'
 import './globals.css';
 import { useEffect } from 'react';
 import { LoadingProvider } from '@/contexts/loading-context';
-import { GlobalLoading } from '@/components/global-loading';
+import LoadingOverlay from '@/components/LoadingOverlay';
 
-export default function RootLayout({ 
-  children,
- }: { 
-  children: React.ReactNode 
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     document.body.classList.remove('vsc-initialized');
   }, []);
 
   return (
-    <html lang="en"  suppressHydrationWarning> 
+    <html lang="en" suppressHydrationWarning> 
       <body className="bg-gradient-custom text-text" suppressHydrationWarning>
-      <LoadingProvider>
-          <GlobalLoading />
+        <LoadingProvider>
+          <LoadingOverlay />
           {children}
         </LoadingProvider>
       </body>
     </html>
   );
-} 
+}

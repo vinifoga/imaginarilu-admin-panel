@@ -4,9 +4,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
+import { useLoading } from '@/contexts/loading-context'; // Adicione esta importação
+
 
 export default function CategoriasPage() {
   const router = useRouter();
+  const { setLoading } = useLoading(); // Adicione esta linha
   interface Categoria {
     id: string;
     name: string;
@@ -20,7 +23,8 @@ export default function CategoriasPage() {
       console.log('Buscando categorias...');
       const { data, error } = await supabase
         .from('categories')
-        .select('*');
+        .select('*')
+        .order('name');
 
       if (error) {
         console.error('Erro ao buscar categorias:', error);
@@ -76,7 +80,10 @@ export default function CategoriasPage() {
           >
             <h2
               className="text-xl font-semibold text-gray-800"
-              onClick={() => router.push(`/dashboard/categorias/editar/${categoria.id}`)}
+              onClick={() => {
+                setLoading(true); // Adicione esta linha
+                router.push(`/dashboard/categorias/editar/${categoria.id}`)}
+              }
             >
               {categoria.name}
             </h2>

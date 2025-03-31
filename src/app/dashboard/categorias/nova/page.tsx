@@ -4,6 +4,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
+import LeftArrowIcon from '../../../../../components/LeftArrowIcon';
+import SaveIcon from '../../../../../components/SaveIcon';
 
 export default function NovaCategoriaPage() {
   const router = useRouter();
@@ -43,21 +45,24 @@ export default function NovaCategoriaPage() {
           />
         </div>
 
-        <div className="flex space-x-4">
+          {/* Botão de Voltar no canto inferior esquerdo */}
           <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
-          >
-            Salvar
-          </button>
-          <button
-            type="button"
             onClick={() => router.push('/dashboard/categorias')}
-            className="w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600"
+            className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
           >
-            Cancelar
+            <LeftArrowIcon />
           </button>
-        </div>
+
+          {/* Botão Flutuante para salvar edições */}
+          <button
+            type="submit"            
+            className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+          >
+            <SaveIcon />
+          </button>
+
+
+        
       </form>
     </div>
   );

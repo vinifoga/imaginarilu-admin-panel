@@ -159,15 +159,20 @@ export default function ConsultaPrecoPage() {
   };
 
   const handleScan = (result: string) => {
-    setMostrarScanner(false);
+    setTimeout(() => {
+      scannerModalRef.current?.stopScanner();
+    }, 100);
     setTermoPesquisa(result);
     buscarProdutos(result);
   };
 
   const handleScannerError = (error: string) => {
     console.error('Erro no scanner:', error);
-    setError('Erro ao ler código de barras');
-    setMostrarScanner(false);
+  };
+
+  const abrirCameraParaScanner = () => {
+    setTermoPesquisa(''); // Limpa o termo de pesquisa
+    setMostrarScanner(true);
   };
 
   const resetarConsulta = () => {
@@ -204,7 +209,7 @@ export default function ConsultaPrecoPage() {
           <div className="absolute inset-y-0 right-0 flex items-center">
             <button
               type="button"
-              onClick={() => setMostrarScanner(true)}
+              onClick={abrirCameraParaScanner}
               className="px-3 text-gray-500 hover:text-blue-600"
             >
               <svg

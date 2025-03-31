@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
 import { useLoading } from '@/contexts/loading-context';
+import SaveIcon from '../../../../../../components/SaveIcon';
+import LeftArrowIcon from '../../../../../../components/LeftArrowIcon';
 
 export default function EditarCategoriaPage() {
   const router = useRouter();
@@ -76,43 +78,22 @@ export default function EditarCategoriaPage() {
             required
           />
         </div>
-              {/* Botão Flutuante voltar */}
+              {/* Botão Flutuante salvar */}
               <button
                 type="submit"
                 className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
-                  />
-                </svg>
+                <SaveIcon /> 
               </button>
       </form>
+      
       {/* Botão de Voltar no canto inferior esquerdo */}
       <button
-                onClick={() => router.push('/dashboard/categorias')}
-                className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                  />
-                </svg>
-              </button>
+          onClick={() => router.push('/dashboard/categorias')}
+          className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+        >
+          <LeftArrowIcon />
+        </button>
     </div>
   );
 }

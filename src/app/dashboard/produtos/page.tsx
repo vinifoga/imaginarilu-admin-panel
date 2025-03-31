@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseCliente';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
 import { formatarMoeda } from '@/utils/moeda';
 import PlaceholderImage from '../../../../components/PlaceholderImage';
+import { useLoading } from '@/contexts/loading-context';
 
 interface Produto {
   id: string;
@@ -34,15 +35,18 @@ export default function ProdutosPage() {
   const [termoPesquisa, setTermoPesquisa] = useState<string>('');
   const [mostrarScanner, setMostrarScanner] = useState(false);
   const scannerModalRef = useRef<{ stopScanner: () => void } | null>(null);
+  const { setLoading } = useLoading();
+  
 
   // Busca os produtos e categorias do Supabase (só no cliente)
   useEffect(() => {
     const fetchProdutos = async () => {
       console.log('Buscando produtos...');
+      setLoading(true);
       const { data: produtosData, error: produtosError } = await supabase
         .from('products')
         .select('*')
-        .order('description', { ascending: true });
+        .order('name', { ascending: true });
   
       if (produtosError) {
         console.error('Erro ao buscar produtos:', produtosError);
@@ -82,6 +86,7 @@ export default function ProdutosPage() {
   
         console.log('Produtos encontrados:', produtosComImagensECategorias);
         setProdutos(produtosComImagensECategorias);
+        setLoading(false);
       }
     };
   
@@ -150,7 +155,6 @@ const produtosFiltrados = termoPesquisa
     }, 100);
     setTermoPesquisa(result);
     setMostrarScanner(false);
-    
   };
   
 
