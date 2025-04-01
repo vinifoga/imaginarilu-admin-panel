@@ -1,7 +1,6 @@
 // src/app/dashboard/page.tsx
 'use client';
 
-import { useLoading } from '@/contexts/loading-context';
 import { supabase } from '@/lib/supabaseCliente';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -10,20 +9,16 @@ import { ClipLoader } from 'react-spinners';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { setLoading } = useLoading();
   const [activeButton, setActiveButton] = useState<string | null>(null);
   
   // Função reutilizável para navegação
   const handleNavigation = (path: string) => {
     setActiveButton(path);
-    setLoading(true);
     router.push(path);
   };
 
   const handleLogout = async () => {
-    setLoading(true);
     await supabase.auth.signOut();
-    setLoading(false);
     router.push('/login');
   };
 
@@ -84,17 +79,16 @@ export default function DashboardPage() {
               <button
                 onClick={handleLogout}
                 disabled={activeButton === 'logout'}
-                className="w-full bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center justify-center gap-2 disabled:opacity-80"
+                className="fixed bottom-6 right-6 bg-red-500 text-white p-4 rounded-full shadow-lg hover:bg-red-600"
               >
-                {activeButton === 'logout' ? (
+              {activeButton === 'logout' ? (
                   <ClipLoader color="#ffffff" size={20} />
                 ) : (
                   <>
                     <FiLogOut className="text-lg" />
-                    Sair
                   </>
-            )}
-          </button>
+            )}                    
+            </button>
         </div>
       </div>
     </div>

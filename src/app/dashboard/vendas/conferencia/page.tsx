@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabaseCliente';
 import { formatarMoeda } from '@/utils/moeda';
 import { IMaskInput } from 'react-imask';
 import axios from 'axios';
+import { CurrencyInput } from '../../../../../components/CurrencyInput';
+import { PercentageInput } from '../../../../../components/PercentageInput';
 
 interface Product {
   id: string;
@@ -23,7 +25,18 @@ interface CartItem {
   quantity: number;
 }
 
+interface PaymentDetails {
+  discount: PaymentAdjustment;
+  addition: PaymentAdjustment;
+  cashAmount: number;
+  showDiscount: boolean;
+  showAddition: boolean;
+}
 
+interface PaymentAdjustment {
+  type: 'fixed' | 'percentage';
+  value: number;
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -50,6 +63,14 @@ export default function CheckoutPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingCep, setIsFetchingCep] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({
+    discount: { type: 'fixed', value: 0 },
+    addition: { type: 'fixed', value: 0 },
+    cashAmount: 0,
+    showDiscount: false,
+    showAddition: false
+  });
+
 
   useEffect(() => {
     const cartParam = searchParams.get('cart');
@@ -64,10 +85,65 @@ export default function CheckoutPage() {
   }, [searchParams]);
 
   const calcularValorTotal = () => {
-    return cartItems.reduce((total, item) => {
+    const subtotal = cartItems.reduce((total, item) => {
       return total + (item.product.sale_price * item.quantity);
     }, 0);
+  
+    // Calcular desconto
+    const discountValue = paymentDetails.discount.type === 'percentage' 
+      ? subtotal * (paymentDetails.discount.value / 100)
+      : paymentDetails.discount.value;
+  
+    // Calcular acréscimo
+    const additionValue = paymentDetails.addition.type === 'percentage' 
+      ? subtotal * (paymentDetails.addition.value / 100)
+      : paymentDetails.addition.value;
+  
+    return subtotal + additionValue - discountValue;
   };
+
+  const calcularTroco = () => {
+    if (paymentMethod !== 'cash' || paymentDetails.cashAmount <= 0) return 0;
+    return paymentDetails.cashAmount - calcularValorTotal();
+  };
+
+  const handleAdjustmentChange = (field: 'discount' | 'addition', key: keyof PaymentAdjustment, value: string | number) => {
+    if (key === 'type') {
+      setPaymentDetails(prev => ({
+        ...prev,
+        [field]: {
+          ...prev[field],
+          type: value
+        }
+      }));
+    } else if (key === 'value') {
+      // Garante que o valor é numérico
+      const numValue = typeof value === 'number' ? value : parseFloat(value as string) || 0;
+      
+      // Limita porcentagem a 100% e garante que é positivo
+      const adjustedValue = Math.min(
+        Math.max(numValue, 0), 
+        paymentDetails[field].type === 'percentage' ? 100 : Number.MAX_SAFE_INTEGER
+      );
+      
+      setPaymentDetails(prev => ({
+        ...prev,
+        [field]: {
+          ...prev[field],
+          value: adjustedValue
+        }
+      }));
+    }
+  };
+
+  const toggleAdjustment = (field: 'discount' | 'addition') => {
+    setPaymentDetails(prev => ({
+      ...prev,
+      [field === 'discount' ? 'showAddition' : 'showDiscount']: false,
+      [field === 'discount' ? 'showDiscount' : 'showAddition']: !prev[field === 'discount' ? 'showDiscount' : 'showAddition']
+    }));
+  };
+  
 
   const handleDeliveryInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -118,7 +194,6 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
     
     try {
-      // 1. Criar a venda no banco de dados
       const { data: sale, error: saleError } = await supabase
         .from('sales')
         .insert([{
@@ -126,10 +201,15 @@ export default function CheckoutPage() {
           payment_method: paymentMethod,
           subtotal: calcularValorTotal(),
           total: calcularValorTotal(),
+          discount: paymentDetails.discount,
+          addition: paymentDetails.addition,
+          cash_amount: paymentMethod === 'cash' ? paymentDetails.cashAmount : null,
+          change: paymentMethod === 'cash' ? calcularTroco() : null,
           status: 'pending'
         }])
         .select()
         .single();
+  
 
       if (saleError) throw saleError;
 
@@ -305,6 +385,179 @@ export default function CheckoutPage() {
                 </button>
               ))}
             </div>
+
+            {/* Botões de Desconto e Acréscimo */}
+            <div className="grid grid-cols-2 gap-4 mb-4 mt-4">
+              <button
+                onClick={() => toggleAdjustment('discount')}
+                className={`p-4 rounded-lg border flex items-center justify-center ${paymentDetails.showDiscount ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600'}`}
+              >
+                <span>Desconto</span>
+                <svg
+                  className={`w-5 h-5 ml-2 transform transition-transform ${paymentDetails.showDiscount ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              <button
+                onClick={() => toggleAdjustment('addition')}
+                className={`p-4 rounded-lg border flex items-center justify-center ${paymentDetails.showAddition ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600'}`}
+              >
+                <span>Acréscimo</span>
+                <svg
+                  className={`w-5 h-5 ml-2 transform transition-transform ${paymentDetails.showAddition ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Inputs de Desconto */}
+            {paymentDetails.showDiscount && (
+            <div className="bg-gray-800 p-4 rounded-lg mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Tipo</label>
+                  <select
+                    value={paymentDetails.discount.type}
+                    onChange={(e) => handleAdjustmentChange('discount', 'type', e.target.value)}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  >
+                    <option value="fixed">Valor Fixo</option>
+                    <option value="percentage">Porcentagem</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    {paymentDetails.discount.type === 'percentage' ? 'Porcentagem (%)' : 'Valor (R$)'}
+                  </label>
+                  {paymentDetails.discount.type === 'percentage' ? (
+  <PercentageInput
+    value={paymentDetails.discount.value}
+    onChange={(value) => handleAdjustmentChange('discount', 'value', value)}
+    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+    max={100}
+    decimalPlaces={2}
+  />
+) : (
+  <CurrencyInput
+    value={paymentDetails.discount.value}
+    onChange={(value) => handleAdjustmentChange('discount', 'value', value)}
+    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+  />
+)}
+                </div>
+              </div>
+            </div>
+          )}
+
+            {/* Inputs de Acréscimo */}
+            {paymentDetails.showAddition && (
+            <div className="bg-gray-800 p-4 rounded-lg mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Tipo</label>
+                  <select
+                    value={paymentDetails.addition.type}
+                    onChange={(e) => handleAdjustmentChange('addition', 'type', e.target.value)}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  >
+                    <option value="fixed">Valor Fixo</option>
+                    <option value="percentage">Porcentagem</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    {paymentDetails.addition.type === 'percentage' ? 'Porcentagem (%)' : 'Valor (R$)'}
+                  </label>
+                  {paymentDetails.addition.type === 'percentage' ? (
+  <PercentageInput
+    value={paymentDetails.addition.value}
+    onChange={(value) => handleAdjustmentChange('addition', 'value', value)}
+    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+    max={100}
+    decimalPlaces={2}
+  />
+) : (
+  <CurrencyInput
+    value={paymentDetails.addition.value}
+    onChange={(value) => handleAdjustmentChange('addition', 'value', value)}
+    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+  />
+)}
+                </div>
+              </div>
+            </div>
+          )}
+
+            {/* Valor em Dinheiro e Troco */}
+            {paymentMethod === 'cash' && (
+              <div className="bg-gray-800 p-4 rounded-lg mb-4">
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Valor Recebido</label>
+                  <CurrencyInput
+                    value={paymentDetails.cashAmount}
+                    onChange={(value) => setPaymentDetails(prev => ({ ...prev, cashAmount: value }))}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  />
+                </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Troco (R$)</label>
+                    <div className="w-full p-3 rounded border border-gray-600 bg-gray-700 text-white">
+                      {formatarMoeda(calcularTroco())}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Resumo do Valor */}
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-400">Subtotal:</span>
+                <span>{formatarMoeda(cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0))}</span>
+              </div>
+
+            {paymentDetails.discount.value > 0 && (
+            <div className="flex justify-between items-center mb-2 text-red-400">
+              <span>Desconto:</span>
+              <span>-{formatarMoeda(
+                paymentDetails.discount.type === 'percentage' 
+                  ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.discount.value / 100))
+                  : paymentDetails.discount.value
+              )}</span>
+            </div>
+          )}
+
+          {paymentDetails.addition.value > 0 && (
+            <div className="flex justify-between items-center mb-2 text-green-400">
+              <span>Acréscimo:</span>
+              <span>+{formatarMoeda(
+                paymentDetails.addition.type === 'percentage' 
+                  ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.addition.value / 100))
+                  : paymentDetails.addition.value
+              )}</span>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center pt-2 border-t border-gray-700">
+              <span className="font-semibold">Total:</span>
+              <span className="font-bold text-xl text-green-400">{formatarMoeda(calcularValorTotal())}</span>
+            </div>
+          </div>
+
+
+      
           </div>
         ) : (
           <div className="mb-8">

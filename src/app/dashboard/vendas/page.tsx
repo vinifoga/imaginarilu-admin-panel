@@ -8,6 +8,7 @@ import { formatarMoeda } from '@/utils/moeda';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
 import PlaceholderImage from '../../../../components/PlaceholderImage'; 
 import { useSearchParams } from 'next/navigation';
+import { useLoading } from '@/contexts/loading-context';
 
 interface Product {
     id: string;
@@ -32,6 +33,8 @@ export default function VendasPage() {
   const [mostrarScanner, setMostrarScanner] = useState(false);
   const scannerModalRef = useRef<{ stopScanner: () => void } | null>(null);
   const searchParams = useSearchParams();
+  const { setLoading } = useLoading();
+
 
   useEffect(() => {
     // Carregar itens do carrinho dos query params ao voltar da conferência
@@ -149,12 +152,14 @@ export default function VendasPage() {
   };
 
   const proceedToCheckout = () => {
+    setLoading(true);
     if (cartItems.length === 0) {
       alert('Adicione produtos ao carrinho antes de finalizar a venda');
       return;
-    }
-    router.push(`/dashboard/vendas/conferencia?cart=${encodeURIComponent(JSON.stringify(cartItems))}`);
-  };
+    }    
+      router.push(`/dashboard/vendas/conferencia?cart=${encodeURIComponent(JSON.stringify(cartItems))}`);
+      setLoading(false);
+    };
 
   return (
     <div className="min-h-screen p-6 bg-gray-900 text-white">
