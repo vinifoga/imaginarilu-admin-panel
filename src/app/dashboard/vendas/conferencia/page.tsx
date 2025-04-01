@@ -70,6 +70,8 @@ export default function CheckoutPage() {
     showDiscount: false,
     showAddition: false
   });
+  const [observations, setObservations] = useState('');
+
 
 
   useEffect(() => {
@@ -205,7 +207,8 @@ export default function CheckoutPage() {
           addition: paymentDetails.addition,
           cash_amount: paymentMethod === 'cash' ? paymentDetails.cashAmount : null,
           change: paymentMethod === 'cash' ? calcularTroco() : null,
-          status: 'pending'
+          status: 'pending',
+          observations: observations // Adicione esta linha
         }])
         .select()
         .single();
@@ -520,6 +523,18 @@ export default function CheckoutPage() {
                 </div>
               </div>
             )}
+
+            {/* Adicione isso antes do "Resumo do Valor" na seção de pickup */}
+            <div className="mb-4">
+              <label className="block text-sm text-gray-400 mb-1">Observações (Opcional)</label>
+              <textarea
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                rows={3}
+                placeholder="Alguma observação importante sobre a venda..."
+              />
+            </div>
 
             {/* Resumo do Valor */}
             <div className="bg-gray-800 p-4 rounded-lg">
