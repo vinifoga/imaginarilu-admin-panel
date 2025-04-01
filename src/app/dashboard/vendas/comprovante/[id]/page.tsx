@@ -6,10 +6,10 @@ import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
 import { PostgrestError } from '@supabase/supabase-js';
 import { formatarData } from '@/utils/formatters';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import Image from 'next/image';
 import { formatarMoeda } from '@/utils/moeda';
+import LeftArrowIcon from '../../../../../../components/LeftArrowIcon';
+import PrintIcon from '../../../../../../components/PrintIcon';
 
 interface Sale {
   id: string;
@@ -144,20 +144,6 @@ export default function ReceiptPage() {
     window.print();
   };
 
-  const handleExportPDF = async () => {
-    if (!receiptRef.current) return;
-    
-    const canvas = await html2canvas(receiptRef.current);
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-    
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`comprovante-venda-${id}.pdf`);
-  };
-
   const getTopItemsImages = () => {
     // Ordena os itens por valor total (do maior para o menor)
     const sortedItems = [...items].sort((a, b) => b.total_price - a.total_price);
@@ -184,27 +170,6 @@ export default function ReceiptPage() {
   return (
     <div className="min-h-screen p-6 bg-gray-900 text-white">
       <div className="max-w-4xl mx-auto">
-        {/* Controles de impressão/exportação */}
-        <div className="flex justify-end gap-4 mb-6 print:hidden">
-          <button
-            onClick={handlePrint}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Imprimir
-          </button>
-          <button
-            onClick={handleExportPDF}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-          >
-            Exportar PDF
-          </button>
-          <button
-            onClick={() => router.push('/dashboard/vendas')}
-            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
-          >
-            Voltar
-          </button>
-        </div>
 
         {/* Comprovante (área a ser impressa/exportada) */}
         <div 
@@ -361,6 +326,23 @@ export default function ReceiptPage() {
             <p>Obrigado pela sua compra!</p>
             <p>Em caso de dúvidas, entre em contato conosco.</p>
           </div>
+
+        {/* Botão de Voltar no canto inferior esquerdo */}
+        <button
+          onClick={() => router.push('/dashboard/vendas')}
+          className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+        >
+          <LeftArrowIcon />
+        </button>
+        {/* Botão Flutuante para salvar edições */}
+        <button
+          onClick={handlePrint}
+          className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+        >
+          <PrintIcon />
+        </button>
+
+
         </div>
       </div>
     </div>
