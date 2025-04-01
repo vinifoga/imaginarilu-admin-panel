@@ -18,6 +18,7 @@ interface Product {
     sku: string;
     sale_price: number;
     image_url: string | null;
+    is_composition: boolean;
   }
 
 interface CartItem {
@@ -64,6 +65,7 @@ export default function VendasPage() {
         barcode,
         sku,
         sale_price,
+        is_composition,
         product_images (image_url)
       `)
       .or(`barcode.ilike.%${termo}%,sku.ilike.%${termo}%,name.ilike.%${termo}%`)
@@ -80,6 +82,7 @@ export default function VendasPage() {
         sku: produto.sku,
         sale_price: produto.sale_price,
         image_url: produto.product_images[0]?.image_url || null,
+        is_composition: produto.is_composition || false,
       }));
       setResultadosPesquisa(produtosComImagem);
     }

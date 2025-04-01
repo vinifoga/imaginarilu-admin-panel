@@ -18,6 +18,7 @@ interface Product {
   sku: string;
   sale_price: number;
   image_url: string | null;
+  is_composition: boolean;
 }
 
 interface CartItem {
@@ -192,6 +193,25 @@ export default function CheckoutPage() {
     }
   };
 
+  const getSubTotal = () => {
+    return formatarMoeda(cartItems.reduce((total: number, item: CartItem) => total + (item.product.sale_price * item.quantity), 0));
+  };
+
+  const getSubTotalNumeric = () => {
+    return cartItems.reduce((total: number, item: CartItem) => total + (item.product.sale_price * item.quantity), 0);
+  }
+
+  const getObservationsDetails = () => {
+    let notes = "\n\n";
+    notes += `Subtotal: ${getSubTotal()}\n`;
+    notes += `Desconto: ${formatarMoeda(paymentDetails.discount.value)} \n`;
+    notes += `Acréscimo:  ${formatarMoeda(paymentDetails.addition.value)} \n`;
+    notes += `Total: ${formatarMoeda(calcularValorTotal())}\n`;
+    notes += `Valor Pago:  ${formatarMoeda(paymentDetails.cashAmount)} \n`;
+    notes += `Troco:  ${formatarMoeda(paymentMethod === 'cash' ? calcularTroco(): 0)} \n`;
+    return notes;
+  };
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     
@@ -201,14 +221,10 @@ export default function CheckoutPage() {
         .insert([{
           sale_type: saleType,
           payment_method: paymentMethod,
-          subtotal: calcularValorTotal(),
+          subtotal: getSubTotalNumeric(),
           total: calcularValorTotal(),
-          discount: paymentDetails.discount,
-          addition: paymentDetails.addition,
-          cash_amount: paymentMethod === 'cash' ? paymentDetails.cashAmount : null,
-          change: paymentMethod === 'cash' ? calcularTroco() : null,
           status: 'pending',
-          observations: observations // Adicione esta linha
+          notes: observations + getObservationsDetails(), 
         }])
         .select()
         .single();
@@ -222,7 +238,8 @@ export default function CheckoutPage() {
         product_id: item.product.id,
         quantity: item.quantity,
         unit_price: item.product.sale_price,
-        total_price: item.product.sale_price * item.quantity
+        total_price: item.product.sale_price * item.quantity,
+        is_composite: item.product.is_composition
       }));
 
       const { error: itemsError } = await supabase
@@ -483,48 +500,26 @@ export default function CheckoutPage() {
                     {paymentDetails.addition.type === 'percentage' ? 'Porcentagem (%)' : 'Valor (R$)'}
                   </label>
                   {paymentDetails.addition.type === 'percentage' ? (
-  <PercentageInput
-    value={paymentDetails.addition.value}
-    onChange={(value) => handleAdjustmentChange('addition', 'value', value)}
-    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-    max={100}
-    decimalPlaces={2}
-  />
-) : (
-  <CurrencyInput
-    value={paymentDetails.addition.value}
-    onChange={(value) => handleAdjustmentChange('addition', 'value', value)}
-    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-  />
-)}
+                  <PercentageInput
+                    value={paymentDetails.addition.value}
+                    onChange={(value) => handleAdjustmentChange('addition', 'value', value)}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    max={100}
+                    decimalPlaces={2}
+                  />
+                ) : (
+                  <CurrencyInput
+                    value={paymentDetails.addition.value}
+                    onChange={(value) => handleAdjustmentChange('addition', 'value', value)}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  />
+                )}
                 </div>
               </div>
             </div>
           )}
 
-            {/* Valor em Dinheiro e Troco */}
-            {paymentMethod === 'cash' && (
-              <div className="bg-gray-800 p-4 rounded-lg mb-4">
-                <div className="grid grid-cols-2 gap-4 mb-3">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Valor Recebido</label>
-                  <CurrencyInput
-                    value={paymentDetails.cashAmount}
-                    onChange={(value) => setPaymentDetails(prev => ({ ...prev, cashAmount: value }))}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  />
-                </div>
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">Troco (R$)</label>
-                    <div className="w-full p-3 rounded border border-gray-600 bg-gray-700 text-white">
-                      {formatarMoeda(calcularTroco())}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Adicione isso antes do "Resumo do Valor" na seção de pickup */}
+            {/* Observações*/}
             <div className="mb-4">
               <label className="block text-sm text-gray-400 mb-1">Observações (Opcional)</label>
               <textarea
@@ -552,7 +547,7 @@ export default function CheckoutPage() {
                   : paymentDetails.discount.value
               )}</span>
             </div>
-          )}
+            )}
 
           {paymentDetails.addition.value > 0 && (
             <div className="flex justify-between items-center mb-2 text-green-400">
@@ -571,7 +566,27 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-
+          {/* Valor em Dinheiro e Troco */}
+          {paymentMethod === 'cash' && (
+                <div className="bg-gray-800 p-4 rounded-lg mb-4 mt-4">
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Valor Recebido</label>
+                  <CurrencyInput
+                  value={paymentDetails.cashAmount}
+                  onChange={(value) => setPaymentDetails(prev => ({ ...prev, cashAmount: value }))}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  />
+                </div>
+                  <div>
+                  <label className="block text-sm text-gray-400 mb-1">Troco (R$)</label>
+                  <div className="w-full p-3 rounded border border-gray-600 bg-gray-700 text-white">
+                    {formatarMoeda(calcularTroco())}
+                  </div>
+                  </div>
+                </div>
+                </div>
+            )}
       
           </div>
         ) : (
