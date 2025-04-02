@@ -53,13 +53,15 @@ export default function CheckoutPage() {
     deliveryTime: '',
     address: {
       cep: '',
-      logradouro: '',
-      numero: '',
-      complemento: '',
-      bairro: '',
-      cidade: '',
+      street: '',
+      number: '',
+      complement: '',
+      neighborhood: '',
+      city: '',
       uf: ''
     },
+    from: '',
+    to: '',
     additionalInfo: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -173,15 +175,16 @@ export default function CheckoutPage() {
     try {
       const response = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
       const data = response.data;
+      console.log(data)
 
       if (!data.erro) {
         setDeliveryInfo(prev => ({
           ...prev,
           address: {
             ...prev.address,
-            logradouro: data.logradouro,
-            bairro: data.bairro,
-            cidade: data.localidade,
+            street: data.logradouro,
+            neighborhood: data.bairro,
+            city: data.localidade,
             uf: data.uf
           }
         }));
@@ -296,15 +299,18 @@ export default function CheckoutPage() {
             sale_id: sale.id,
             customer_name: deliveryInfo.customerName,
             customer_phone: deliveryInfo.customerPhone,
-            delivery_date: `${deliveryInfo.deliveryDate}T${deliveryInfo.deliveryTime}`,
+            delivery_date: `${deliveryInfo.deliveryDate}`,
+            delivery_time: `${deliveryInfo.deliveryTime}`,
             cep: deliveryInfo.address.cep,
-            logradouro: deliveryInfo.address.logradouro,
-            numero: deliveryInfo.address.numero,
-            complemento: deliveryInfo.address.complemento,
-            bairro: deliveryInfo.address.bairro,
-            cidade: deliveryInfo.address.cidade,
+            street: deliveryInfo.address.street,
+            number: deliveryInfo.address.number,
+            complement: deliveryInfo.address.complement,
+            neighborhood: deliveryInfo.address.neighborhood,
+            city: deliveryInfo.address.city,
             uf: deliveryInfo.address.uf,
-            additional_info: deliveryInfo.additionalInfo
+            additional_info: deliveryInfo.additionalInfo,
+            from: deliveryInfo.from,
+            to: deliveryInfo.to
           }]);
 
         if (deliveryError) throw deliveryError;
@@ -428,8 +434,182 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {saleType === 'pickup' ? (
+        {saleType === 'delivery' && (
           <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">Informações de Entrega</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Nome do Cliente</label>
+              <input
+                type="text"
+                name="customerName"
+                value={deliveryInfo.customerName}
+                onChange={handleDeliveryInfoChange}
+                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Telefone</label>
+              <IMaskInput
+                mask="(00) 00000-0000"
+                name="customerPhone"
+                value={deliveryInfo.customerPhone}
+                onAccept={(value) => setDeliveryInfo({...deliveryInfo, customerPhone: value})}
+                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                required
+              />
+            </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">De</label>
+                <input
+                  type="text"
+                  name="from"
+                  value={deliveryInfo.from}
+                  onChange={handleDeliveryInfoChange}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Para</label>
+                <input
+                  type="text"
+                  name="to"
+                  value={deliveryInfo.to}
+                  onChange={handleDeliveryInfoChange}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  min="06:00"
+                  max="19:00"
+                  required
+                />
+              </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Data</label>
+                <input
+                  type="date"
+                  name="deliveryDate"
+                  value={deliveryInfo.deliveryDate}
+                  onChange={handleDeliveryInfoChange}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Hora</label>
+                <input
+                  type="time"
+                  name="deliveryTime"
+                  value={deliveryInfo.deliveryTime}
+                  onChange={handleDeliveryInfoChange}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  min="06:00"
+                  max="19:00"
+                  required
+                />
+              </div>
+            </div>
+            
+            {/* Campos de endereço */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">CEP</label>
+                <IMaskInput
+                  mask="00000-000"
+                  name="address.cep"
+                  value={deliveryInfo.address.cep}
+                  onAccept={(value) => {
+                    setDeliveryInfo(prev => ({
+                      ...prev,
+                      address: {
+                        ...prev.address,
+                        cep: value
+                      }
+                    }));
+                  }}
+                  onBlur={handleCepBlur}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  required
+                  disabled={isFetchingCep}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Número</label>
+                <input
+                  type="text"
+                  name="address.number"
+                  value={deliveryInfo.address.number}
+                  onChange={handleDeliveryInfoChange}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Logradouro</label>
+              <input
+                type="text"
+                name="address.street"
+                value={deliveryInfo.address.street}
+                onChange={handleDeliveryInfoChange}
+                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Bairro</label>
+                <input
+                  type="text"
+                  name="address.neighborhood"
+                  value={deliveryInfo.address.neighborhood}
+                  onChange={handleDeliveryInfoChange}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Cidade</label>
+                <input
+                  type="text"
+                  name="address.city"
+                  value={deliveryInfo.address.city}
+                  onChange={handleDeliveryInfoChange}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Complemento (Opcional)</label>
+              <input
+                type="text"
+                name="address.complement"
+                value={deliveryInfo.address.complement}
+                onChange={handleDeliveryInfoChange}
+                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Informações Adicionais</label>
+              <textarea
+                name="additionalInfo"
+                value={deliveryInfo.additionalInfo}
+                onChange={handleDeliveryInfoChange}
+                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                rows={3}
+              />
+            </div>
+          </div>
+        </div>
+        )}
+
+<div className="mb-8">
             <h2 className="text-lg font-semibold mb-4">Método de Pagamento</h2>
             <div className="grid grid-cols-2 gap-4">
               {['cash', 'credit_card', 'debit_card', 'pix'].map((method) => (
@@ -629,156 +809,6 @@ export default function CheckoutPage() {
             )}
       
           </div>
-        ) : (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-4">Informações de Entrega</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Nome do Cliente</label>
-                <input
-                  type="text"
-                  name="customerName"
-                  value={deliveryInfo.customerName}
-                  onChange={handleDeliveryInfoChange}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Telefone</label>
-                <IMaskInput
-                  mask="(00) 00000-0000"
-                  name="customerPhone"
-                  value={deliveryInfo.customerPhone}
-                  onAccept={(value) => setDeliveryInfo({...deliveryInfo, customerPhone: value})}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Data</label>
-                  <input
-                    type="date"
-                    name="deliveryDate"
-                    value={deliveryInfo.deliveryDate}
-                    onChange={handleDeliveryInfoChange}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Hora</label>
-                  <input
-                    type="time"
-                    name="deliveryTime"
-                    value={deliveryInfo.deliveryTime}
-                    onChange={handleDeliveryInfoChange}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                    min="06:00"
-                    max="19:00"
-                    required
-                  />
-                </div>
-              </div>
-              
-              {/* Campos de endereço */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">CEP</label>
-                  <IMaskInput
-                    mask="00000-000"
-                    name="address.cep"
-                    value={deliveryInfo.address.cep}
-                    onAccept={(value) => {
-                      setDeliveryInfo(prev => ({
-                        ...prev,
-                        address: {
-                          ...prev.address,
-                          cep: value
-                        }
-                      }));
-                    }}
-                    onBlur={handleCepBlur}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                    required
-                    disabled={isFetchingCep}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Número</label>
-                  <input
-                    type="text"
-                    name="address.numero"
-                    value={deliveryInfo.address.numero}
-                    onChange={handleDeliveryInfoChange}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Logradouro</label>
-                <input
-                  type="text"
-                  name="address.logradouro"
-                  value={deliveryInfo.address.logradouro}
-                  onChange={handleDeliveryInfoChange}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Bairro</label>
-                  <input
-                    type="text"
-                    name="address.bairro"
-                    value={deliveryInfo.address.bairro}
-                    onChange={handleDeliveryInfoChange}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Cidade</label>
-                  <input
-                    type="text"
-                    name="address.cidade"
-                    value={deliveryInfo.address.cidade}
-                    onChange={handleDeliveryInfoChange}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Complemento (Opcional)</label>
-                <input
-                  type="text"
-                  name="address.complemento"
-                  value={deliveryInfo.address.complemento}
-                  onChange={handleDeliveryInfoChange}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Informações Adicionais</label>
-                <textarea
-                  name="additionalInfo"
-                  value={deliveryInfo.additionalInfo}
-                  onChange={handleDeliveryInfoChange}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  rows={3}
-                />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Botão de Voltar */}
         <button
@@ -806,8 +836,8 @@ export default function CheckoutPage() {
             onClick={handleSubmit}
             disabled={isSubmitting || (saleType === 'pickup' && !paymentMethod) || 
                      (saleType === 'delivery' && (!deliveryInfo.customerName || !deliveryInfo.address.cep || 
-                      !deliveryInfo.address.logradouro || !deliveryInfo.address.numero || 
-                      !deliveryInfo.address.bairro || !deliveryInfo.address.cidade))}
+                      !deliveryInfo.address.street || !deliveryInfo.address.number || 
+                      !deliveryInfo.address.neighborhood || !deliveryInfo.address.city))}
             className="fixed bottom-6 right-6 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700"
         >
             <svg

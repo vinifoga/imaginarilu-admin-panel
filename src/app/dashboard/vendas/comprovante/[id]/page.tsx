@@ -36,16 +36,17 @@ interface DeliveryInfo {
   customer_name: string;
   customer_phone: string;
   delivery_date: string;
-  address: {
-    cep: string;
-    logradouro: string;
-    numero: string;
-    complemento: string;
-    bairro: string;
-    cidade: string;
-    uf: string;
-  };
+  delivery_time: string;
+  cep: string;
+  street: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  city: string;
+  uf: string;
   additional_info: string;
+  from: string;
+  to: string;
 }
 
 export default function ReceiptPage() {
@@ -128,6 +129,7 @@ export default function ReceiptPage() {
 
           if (deliveryError) throw deliveryError;
           setDeliveryInfo(deliveryData);
+
         }
 
       } catch (error) {
@@ -204,37 +206,9 @@ export default function ReceiptPage() {
             <p className="text-gray-600 text-sm">{formatarData(sale.created_at)}</p>
           </div>
 
-          {/* Informações de entrega (se aplicável) */}
           {sale.sale_type === 'delivery' && deliveryInfo && (
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-medium text-gray-700">Cliente</h3>
-                  <p>{deliveryInfo.customer_name}</p>
-                  <p>{deliveryInfo.customer_phone}</p>
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-700">Endereço</h3>
-                  <p>
-                    {deliveryInfo.address.logradouro}, {deliveryInfo.address.numero}
-                    {deliveryInfo.address.complemento && `, ${deliveryInfo.address.complemento}`}
-                  </p>
-                  <p>
-                    {deliveryInfo.address.bairro} - {deliveryInfo.address.cidade}/{deliveryInfo.address.uf}
-                  </p>
-                  <p>CEP: {deliveryInfo.address.cep}</p>
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-700">Data/Hora</h3>
-                  <p>{formatarData(deliveryInfo.delivery_date, true)}</p>
-                </div>
-                {deliveryInfo.additional_info && (
-                  <div>
-                    <h3 className="font-medium text-gray-700">Informações Adicionais</h3>
-                    <p>{deliveryInfo.additional_info}</p>
-                  </div>
-                )}
-              </div>
+            <div className="text-center mb-6">
+                <p className="text-gray-700 whitespace-pre-line">{deliveryInfo.customer_name} - {deliveryInfo.customer_phone}</p>
             </div>
           )}
 
@@ -304,10 +278,50 @@ export default function ReceiptPage() {
             </div>
           )}
 
-          {/* Rodapé */}
-          <div className="text-center text-gray-500 text-xs mt-6">
-            <p>Obrigado pela sua compra!</p>
+          {sale.sale_type === 'delivery' && deliveryInfo &&(
+                <div>
+                  <h3 className="font-medium text-gray-700">Informações Adicionais</h3>
+                  <p className="text-sm text-gray-700 whitespace-pre-line">{deliveryInfo.additional_info}</p>
+                </div>
+          )}
+
+          <div className="relative flex items-center py-4">
+            <div className="flex-grow border-t border-dashed border-gray-400"></div>
+            <svg className="flex-shrink-0 mx-2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758L5 19m7-7l-7-7m7 7l2.879-2.879"/>
+            </svg>
+            <div className="flex-grow border-t border-dashed border-gray-400"></div>
           </div>
+
+          {/* Informações de entrega (se aplicável) */}
+          {sale.sale_type === 'delivery' && deliveryInfo && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className="text-center mb-6">
+              <h1 className="text-medium font-bold text-gray-800">Pedido - {getShortId(sale.id)}</h1>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-wrap items-center gap-x-2">
+                <span className="text-medium text-gray-700">Data: {formatarData(deliveryInfo.delivery_date)}</span>
+                <span className="text-medium text-gray-700">Hora: {deliveryInfo.delivery_time}</span>
+              </div>
+              <span className="text-medium text-gray-700">Para: {deliveryInfo.to}</span>
+              {deliveryInfo && (
+                <div>
+                  <h3 className="font-medium text-gray-700">Endereço</h3>
+                  <p className="font-medium text-gray-700 whitespace-pre-line">
+                    {deliveryInfo.street}, {deliveryInfo.number}
+                  </p>
+                  <p className="font-medium text-gray-700 whitespace-pre-line">
+                    {deliveryInfo.neighborhood} - {deliveryInfo.city}/{deliveryInfo.uf}
+                  </p>
+                  <p className="font-medium text-gray-700 whitespace-pre-line">
+                    {deliveryInfo.complement}
+                  </p>
+              </div>
+              )}
+            </div>
+          </div>
+        )}
 
           {/* Botões de ação */}
           <button
