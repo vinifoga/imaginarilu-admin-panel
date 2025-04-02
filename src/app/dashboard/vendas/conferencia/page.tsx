@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
-import { formatarMoeda } from '@/utils/moeda';
+import { formatarMoeda, formatarPorcentagem } from '@/utils/moeda';
 import { IMaskInput } from 'react-imask';
 import axios from 'axios';
 import { CurrencyInput } from '../../../../../components/CurrencyInput';
@@ -201,14 +201,54 @@ export default function CheckoutPage() {
     return cartItems.reduce((total: number, item: CartItem) => total + (item.product.sale_price * item.quantity), 0);
   }
 
+  const translatePaymentMethod = (method: "cash" | "credit_card" | "debit_card" | "pix" | undefined): string => {
+    switch(method) {
+      case 'cash':
+        return 'Dinheiro';
+      case 'credit_card':
+        return 'Cartão de Crédito';
+      case 'debit_card':
+        return 'Cartão de Débito';
+      case 'pix':
+        return 'PIX';
+      default:
+        return 'Método não especificado';
+    }
+  };
+
   const getObservationsDetails = () => {
-    let notes = "\n\n";
+    let notes ='';
+
+    if(observations.length>0){
+      notes = "\n\n";
+
+    }
+    notes += `Meio de pagamento: ${translatePaymentMethod(paymentMethod)}\n`;
     notes += `Subtotal: ${getSubTotal()}\n`;
-    notes += `Desconto: ${formatarMoeda(paymentDetails.discount.value)} \n`;
-    notes += `Acréscimo:  ${formatarMoeda(paymentDetails.addition.value)} \n`;
+    if(paymentDetails.discount.value !== 0){
+      if(paymentDetails.discount.type === 'percentage'){
+        notes += `Desconto: ${formatarPorcentagem(paymentDetails.discount.value)} \n`
+      } else {
+        notes += `Desconto: ${formatarMoeda(paymentDetails.discount.value)} \n`;
+      }        
+    }
+
+    if(paymentDetails.addition.value !== 0){
+      if(paymentDetails.addition.type === 'percentage'){
+        notes += `Acréscimo:  ${formatarPorcentagem(paymentDetails.addition.value)} \n`;
+      } else {
+        notes += `Acréscimo:  ${formatarMoeda(paymentDetails.addition.value)} \n`;
+      }
+
+    }
+
     notes += `Total: ${formatarMoeda(calcularValorTotal())}\n`;
-    notes += `Valor Pago:  ${formatarMoeda(paymentDetails.cashAmount)} \n`;
-    notes += `Troco:  ${formatarMoeda(paymentMethod === 'cash' ? calcularTroco(): 0)} \n`;
+
+    if(paymentMethod === 'cash'){
+      notes += `Valor Pago:  ${formatarMoeda(paymentDetails.cashAmount)} \n`;
+      notes += `Troco:  ${formatarMoeda(calcularTroco())} \n`;
+    }
+
     return notes;
   };
 
@@ -461,20 +501,20 @@ export default function CheckoutPage() {
                     {paymentDetails.discount.type === 'percentage' ? 'Porcentagem (%)' : 'Valor (R$)'}
                   </label>
                   {paymentDetails.discount.type === 'percentage' ? (
-  <PercentageInput
-    value={paymentDetails.discount.value}
-    onChange={(value) => handleAdjustmentChange('discount', 'value', value)}
-    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-    max={100}
-    decimalPlaces={2}
-  />
-) : (
-  <CurrencyInput
-    value={paymentDetails.discount.value}
-    onChange={(value) => handleAdjustmentChange('discount', 'value', value)}
-    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-  />
-)}
+                  <PercentageInput
+                    value={paymentDetails.discount.value}
+                    onChange={(value) => handleAdjustmentChange('discount', 'value', value)}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    max={100}
+                    decimalPlaces={2}
+                  />
+                ) : (
+                  <CurrencyInput
+                    value={paymentDetails.discount.value}
+                    onChange={(value) => handleAdjustmentChange('discount', 'value', value)}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  />
+                )}
                 </div>
               </div>
             </div>

@@ -57,6 +57,11 @@ export default function ReceiptPage() {
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Função para gerar um ID curto a partir do UUID
+  const getShortId = (uuid: string) => {
+    return uuid.split('-').pop()?.slice(0, 4).toUpperCase() || uuid.slice(0, 4).toUpperCase();
+  };
+
   useEffect(() => {
     const fetchSaleData = async () => {
       try {
@@ -86,24 +91,24 @@ export default function ReceiptPage() {
         if (itemsError) throw itemsError;
         
         if(itemsData !== null){
-        // Buscar imagem dos itens
-        const formattedItems = await Promise.all(
+          // Buscar imagem dos itens
+          const formattedItems = await Promise.all(
             itemsData.map(async (item) => {
               if (typeof item === 'object' && item !== null) {
                 const { data: imagensData, error: imagensError } = await supabase
-              .from('product_images')
-              .select('image_url')
-              .eq('product_id', item.product_id)
-              .limit(1);
-  
+                  .from('product_images')
+                  .select('image_url')
+                  .eq('product_id', item.product_id)
+                  .limit(1);
+    
                 if (imagensError) {
-              console.error('Erro ao buscar imagens:', imagensError);
+                  console.error('Erro ao buscar imagens:', imagensError);
                 }
-  
+    
                 return {
-              ...item,
-              product_name: item.product_name,
-              product_image: imagensData?.[0]?.image_url || null,
+                  ...item,
+                  product_name: item.product_name,
+                  product_image: imagensData?.[0]?.image_url || null,
                 };
               }
               return item;
@@ -111,11 +116,7 @@ export default function ReceiptPage() {
           );
 
           setItems(formattedItems);
-
-          console.log(formattedItems)
-
         }
-
 
         // Se for entrega, buscar informações de entrega
         if (saleData.sale_type === 'delivery') {
@@ -145,9 +146,7 @@ export default function ReceiptPage() {
   };
 
   const getTopItemsImages = () => {
-    // Ordena os itens por valor total (do maior para o menor)
     const sortedItems = [...items].sort((a, b) => b.total_price - a.total_price);
-    // Pega os 3 primeiros itens (ou menos se houver menos itens)
     return sortedItems.slice(0, 3).filter(item => item.product_image);
   };
 
@@ -170,42 +169,44 @@ export default function ReceiptPage() {
   return (
     <div className="min-h-screen p-6 bg-gray-900 text-white">
       <div className="max-w-4xl mx-auto">
-
-        {/* Comprovante (área a ser impressa/exportada) */}
         <div 
           ref={receiptRef}
           className="bg-white p-8 rounded-lg shadow-lg print:shadow-none print:p-0"
         >
-          {/* Cabeçalho com imagens dos produtos mais caros */}
-          {getTopItemsImages().length > 0 && (
-            <div className="flex justify-center gap-4 mb-6">
-              {getTopItemsImages().map((item, index) => (
-                <div key={index} className="w-24 h-24 rounded-lg overflow-hidden border">
-                  <Image
-                    src={item.product_image!}
-                    alt={item.product_name}
-                    width={96}
-                    height={96}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
+          {/* Cabeçalho com badge de tipo e imagens */}
+          <div className="flex flex-col items-center mb-6">
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-4 ${
+              sale.sale_type === 'delivery' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+            }`}>
+              {sale.sale_type === 'delivery' ? 'Entrega' : 'Retira'}
             </div>
-          )}
-
-          {/* Informações da venda */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Comprovante de Venda</h1>
-            <p className="text-gray-600">Nº {sale.id}</p>
-            <p className="text-gray-600">{formatarData(sale.created_at)}</p>
+            
+            {getTopItemsImages().length > 0 && (
+              <div className="flex justify-center gap-4">
+                {getTopItemsImages().map((item, index) => (
+                  <div key={index} className="w-20 h-20 rounded-lg overflow-hidden border">
+                    <Image
+                      src={item.product_image!}
+                      alt={item.product_name || `Product image ${index + 1}`}
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Tipo de venda */}
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">
-              {sale.sale_type === 'delivery' ? 'Entrega' : 'Retirada no Local'}
-            </h2>
-            {sale.sale_type === 'delivery' && deliveryInfo && (
+          {/* Número do pedido e data */}
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">Pedido - {getShortId(sale.id)}</h1>
+            <p className="text-gray-600 text-sm">{formatarData(sale.created_at)}</p>
+          </div>
+
+          {/* Informações de entrega (se aplicável) */}
+          {sale.sale_type === 'delivery' && deliveryInfo && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <h3 className="font-medium text-gray-700">Cliente</h3>
@@ -234,19 +235,18 @@ export default function ReceiptPage() {
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Itens da venda */}
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Itens</h2>
             <div className="border rounded-lg overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-gray-700">Item</th>
+                    <th className="px-4 py-2 text-left text-gray-700">Produto</th>
                     <th className="px-4 py-2 text-right text-gray-700">Qtd</th>
-                    <th className="px-4 py-2 text-right text-gray-700">Preço Unit.</th>
+                    <th className="px-4 py-2 text-right text-gray-700">Unit.</th>
                     <th className="px-4 py-2 text-right text-gray-700">Total</th>
                   </tr>
                 </thead>
@@ -256,22 +256,22 @@ export default function ReceiptPage() {
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
                           {item.product_image && (
-                            <div className="w-10 h-10 rounded overflow-hidden">
+                            <div className="w-8 h-8 rounded overflow-hidden">
                               <Image
                                 src={item.product_image}
-                                alt={item.product_name}
-                                width={40}
-                                height={40}
+                                alt={item.product_name || `Product image ${index + 1}`}
+                                width={32}
+                                height={32}
                                 className="w-full h-full object-cover"
                               />
                             </div>
                           )}
-                          <span>{item.product_name}</span>
+                          <span className="text-sm">{item.product_name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-right text-gray-500">{item.quantity}</td>
-                      <td className="px-4 py-2 text-right text-gray-500">{formatarMoeda(item.unit_price)}</td>
-                      <td className="px-4 py-2 text-right text-gray-500 font-medium">
+                      <td className="px-4 py-2 text-right text-gray-500 text-sm">{item.quantity}</td>
+                      <td className="px-4 py-2 text-right text-gray-500 text-sm">{formatarMoeda(item.unit_price)}</td>
+                      <td className="px-4 py-2 text-right text-gray-500 font-medium text-sm">
                         {formatarMoeda(item.total_price)}
                       </td>
                     </tr>
@@ -282,30 +282,16 @@ export default function ReceiptPage() {
           </div>
 
           {/* Resumo financeiro */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Pagamento</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-medium text-gray-900 mb-2">Método de Pagamento</h3>
-                <p className="text-lg text-gray-700">
-                  {sale.payment_method === 'cash' && 'Dinheiro'}
-                  {sale.payment_method === 'credit_card' && 'Cartão de Crédito'}
-                  {sale.payment_method === 'debit_card' && 'Cartão de Débito'}
-                  {sale.payment_method === 'pix' && 'PIX'}
-                </p>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-medium text-gray-900 mb-2">Resumo Financeiro</h3>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-gray-700">
-                    <span>Subtotal:</span>
-                    <span>{formatarMoeda(sale.subtotal)}</span>
-                  </div>
-                  {/* Aqui você pode adicionar descontos/acréscimos se tiver esses dados */}
-                  <div className="flex justify-between font-bold text-lg pt-2 border-t text-gray-700">
-                    <span>Total:</span>
-                    <span>{formatarMoeda(sale.total)}</span>
-                  </div>
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">            
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between text-gray-700">
+                  <span>Subtotal:</span>
+                  <span>{formatarMoeda(sale.subtotal)}</span>
+                </div>
+                <div className="flex justify-between font-bold pt-2 border-t text-gray-700">
+                  <span>Total:</span>
+                  <span>{formatarMoeda(sale.total)}</span>
                 </div>
               </div>
             </div>
@@ -313,36 +299,30 @@ export default function ReceiptPage() {
 
           {/* Observações */}
           {sale.notes && (
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Observações</h2>
-              <div className="bg-gray-50 p-4 rounded-lg whitespace-pre-line text-gray-700">
-                {sale.notes}
-              </div>
+            <div className="mb-6 bg-gray-50 p-3 rounded-lg">
+              <p className="text-sm text-gray-700 whitespace-pre-line">{sale.notes}</p>
             </div>
           )}
 
           {/* Rodapé */}
-          <div className="text-center text-gray-500 text-sm mt-8">
+          <div className="text-center text-gray-500 text-xs mt-6">
             <p>Obrigado pela sua compra!</p>
-            <p>Em caso de dúvidas, entre em contato conosco.</p>
           </div>
 
-        {/* Botão de Voltar no canto inferior esquerdo */}
-        <button
-          onClick={() => router.push('/dashboard/vendas')}
-          className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
-        >
-          <LeftArrowIcon />
-        </button>
-        {/* Botão Flutuante para salvar edições */}
-        <button
-          onClick={handlePrint}
-          className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
-        >
-          <PrintIcon />
-        </button>
-
-
+          {/* Botões de ação */}
+          <button
+            onClick={() => router.push('/dashboard/vendas')}
+            className="fixed bottom-6 left-6 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700"
+          >
+            <LeftArrowIcon />
+          </button>
+          
+          <button
+            onClick={handlePrint}
+            className="fixed bottom-6 right-6 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700"
+          >
+            <PrintIcon />
+          </button>
         </div>
       </div>
     </div>
