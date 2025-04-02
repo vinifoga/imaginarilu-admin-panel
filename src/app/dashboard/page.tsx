@@ -4,7 +4,7 @@
 import { supabase } from '@/lib/supabaseCliente';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { FiShoppingCart, FiList, FiPackage, FiDollarSign, FiLogOut, FiSearch } from 'react-icons/fi';
+import { FiShoppingCart, FiList, FiPackage, FiDollarSign, FiLogOut, FiSearch, FiFileText } from 'react-icons/fi';
 import { ClipLoader } from 'react-spinners';
 
 export default function DashboardPage() {
@@ -48,7 +48,12 @@ export default function DashboardPage() {
       path: '/dashboard/simulacao',
       icon: <FiDollarSign className="text-lg" />,
       label: 'Simulação de preço'
-    }
+    },
+    {
+      path: '/dashboard/consulta-vendas',
+      icon: <FiFileText className="text-lg" />,
+      label: 'Consulta de Vendas'
+    },
   ];
 
   return (

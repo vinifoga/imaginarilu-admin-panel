@@ -59,8 +59,8 @@ export default function ReceiptPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Função para gerar um ID curto a partir do UUID
-  const getShortId = (uuid: string) => {
-    return uuid.split('-').pop()?.slice(0, 4).toUpperCase() || uuid.slice(0, 4).toUpperCase();
+  const getShortId = (id: string) => {
+    return id.slice(0, 8).toUpperCase();
   };
 
   useEffect(() => {
