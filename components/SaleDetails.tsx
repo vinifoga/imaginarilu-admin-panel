@@ -12,7 +12,9 @@ import LeftArrowIcon from './LeftArrowIcon';
 import PrintIcon from './PrintIcon';
 import { FiHome, FiTruck } from 'react-icons/fi';
 import { OrderBadge } from './OrderBadge';
-import { OrderStatus } from '@/lib/orderStatus';
+import { getStatusFromTranslation, OrderStatus } from '@/lib/orderStatus';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface Sale {
   id: string;
@@ -70,6 +72,10 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
   const getShortId = (id: string) => {
     return id.slice(0, 8).toUpperCase();
   };
+
+  useEffect(() => {
+    console.log('Sale status updated:', sale?.status);
+  }, [sale?.status]);
 
   useEffect(() => {
     const fetchSaleData = async () => {
@@ -175,6 +181,73 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
       </div>
     );
   }
+  const handleStatusChange = async (newStatus: OrderStatus) => {
+    try {
+      // Converte o enum para o formato do banco de dados
+      const dbStatus = getStatusFromTranslation(newStatus).toString();
+      
+      const { error } = await supabase
+        .from('sales')
+        .update({ status: dbStatus })
+        .eq('id', id);
+  
+      if (error) throw error;
+  
+      // Atualiza o estado local de forma mais eficiente
+      setSale(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          status: newStatus // Usa o valor do enum diretamente
+        };
+      });
+      
+      toast.success(`Status atualizado para ${newStatus}`, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+      
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      toast.error('Erro ao atualizar status do pedido', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+    }
+  };
+  
+  const getStatusEnum = (statusString: string): OrderStatus => {
+    // Verifica se o status do banco existe diretamente no enum
+    if (Object.values(OrderStatus).includes(statusString as OrderStatus)) { 
+      return statusString as OrderStatus;
+    }
+    
+    // Caso contrário, faz um mapeamento manual se necessário
+    const statusMap: Record<string, OrderStatus> = {
+      'PENDING': OrderStatus.PENDING,
+      'PROCESSING': OrderStatus.PROCESSING,
+      'AWAITING_PAYMENT': OrderStatus.AWAITING_PAYMENT,
+      'PAID': OrderStatus.PAID,
+      'SHIPPED': OrderStatus.SHIPPED,
+      'DELIVERED': OrderStatus.DELIVERED,
+      'CANCELED': OrderStatus.CANCELED,
+      'RETURNED': OrderStatus.RETURNED,
+      'REFUNDED': OrderStatus.REFUNDED,
+      'AWAITING_PICKUP': OrderStatus.AWAITING_PICKUP
+    };
+  
+    return statusMap[statusString.toLowerCase()];
+  };
 
   return (
     <div className="min-h-screen p-6 bg-gray-900 text-white">
@@ -185,12 +258,16 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
         >
           {/* Cabeçalho com badge de tipo e imagens */}
           <div className="flex flex-col items-center mb-6">
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-4 ${
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-4 ${
               sale.sale_type === 'delivery' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
             }`}>
               {sale.sale_type === 'delivery' ? <FiTruck /> : <FiHome />}
               <span>{sale.sale_type === 'delivery' ? 'Entrega' : 'Retira'}</span>
-              <OrderBadge status={OrderStatus.PENDING} />
+              <OrderBadge 
+                status={getStatusEnum(sale.status)} 
+                onChange={handleStatusChange}
+                key={sale.status}
+              />
             </div>
 
             
@@ -352,6 +429,7 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
           </button>
         </div>
       </div>
+      <ToastContainer />
     </div>
   );
 }
