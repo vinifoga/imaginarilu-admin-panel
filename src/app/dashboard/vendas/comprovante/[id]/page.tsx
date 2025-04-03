@@ -10,6 +10,9 @@ import Image from 'next/image';
 import { formatarMoeda } from '@/utils/moeda';
 import LeftArrowIcon from '../../../../../../components/LeftArrowIcon';
 import PrintIcon from '../../../../../../components/PrintIcon';
+import { FiHome, FiTruck } from 'react-icons/fi';
+import { OrderBadge } from '../../../../../../components/OrderBadge';
+import { OrderStatus } from '@/lib/orderStatus';
 
 interface Sale {
   id: string;
@@ -177,11 +180,14 @@ export default function ReceiptPage() {
         >
           {/* Cabeçalho com badge de tipo e imagens */}
           <div className="flex flex-col items-center mb-6">
-            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-4 ${
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-4 ${
               sale.sale_type === 'delivery' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
             }`}>
-              {sale.sale_type === 'delivery' ? 'Entrega' : 'Retira'}
+              {sale.sale_type === 'delivery' ? <FiTruck /> : <FiHome />}
+              <span>{sale.sale_type === 'delivery' ? 'Entrega' : 'Retira'}</span>
+              <OrderBadge status={OrderStatus.PENDING} />
             </div>
+
             
             {getTopItemsImages().length > 0 && (
               <div className="flex justify-center gap-4">
@@ -285,13 +291,15 @@ export default function ReceiptPage() {
                 </div>
           )}
 
-          <div className="relative flex items-center py-4">
-            <div className="flex-grow border-t border-dashed border-gray-400"></div>
-            <svg className="flex-shrink-0 mx-2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758L5 19m7-7l-7-7m7 7l2.879-2.879"/>
-            </svg>
-            <div className="flex-grow border-t border-dashed border-gray-400"></div>
-          </div>
+          {sale.sale_type === 'delivery' && deliveryInfo && ( 
+            <div className="relative flex items-center py-4">
+              <div className="flex-grow border-t border-dashed border-gray-400"></div>
+              <svg className="flex-shrink-0 mx-2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758L5 19m7-7l-7-7m7 7l2.879-2.879"/>
+              </svg>
+              <div className="flex-grow border-t border-dashed border-gray-400"></div>
+            </div>
+          )}
 
           {/* Informações de entrega (se aplicável) */}
           {sale.sale_type === 'delivery' && deliveryInfo && (

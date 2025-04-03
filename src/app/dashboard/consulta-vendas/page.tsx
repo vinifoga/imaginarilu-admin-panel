@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabaseCliente';
 import { formatarMoeda } from '@/utils/moeda';
 import { FiSearch, FiFileText, FiUser, FiCalendar, FiDollarSign, FiArrowRight, FiTruck, FiHome } from 'react-icons/fi';
 import { ClipLoader } from 'react-spinners';
+import { OrderStatus } from '@/lib/orderStatus';
+import { OrderBadge } from '../../../../components/OrderBadge';
 
 interface Sale {
   id: string;
@@ -31,7 +33,6 @@ interface Sale {
 export default function ConsultaVendasPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchType, setSearchType] = useState<'sale' | 'customer' | 'phone'>('sale');
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,68 +40,46 @@ export default function ConsultaVendasPage() {
   const fetchSales = async () => {
     setLoading(true);
     setError(null);
-    
+  
     try {
-      // Primeiro fazemos uma consulta para buscar todas as vendas
-      let salesQuery = supabase
-        .from('sales')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20);
+      if (!searchTerm) {
+        const { data, error } = await supabase
+          .from('sales')
+          .select('*, delivery_infos (*)')
+          .order('created_at', { ascending: false })
+          .limit(20);
   
-      // Aplicamos filtros de pesquisa se houver termo
-      if (searchTerm) {
-        if (searchType === 'sale') {
-          salesQuery = salesQuery.ilike('sale_id', `%${searchTerm}%`);
-        } else {
-          // Para cliente e telefone, vamos primeiro buscar nas delivery_infos
-          const { data: deliveryData, error: deliveryError } = await supabase
-            .from('delivery_infos')
-            .select('sale_id')
-            .ilike(
-              searchType === 'customer' ? 'customer_name' : 'customer_phone',
-              `%${searchTerm}%`
-            );
-  
-          if (!deliveryError && deliveryData?.length) {
-            const saleIds = deliveryData.map(d => d.sale_id);
-            salesQuery = salesQuery.in('id', saleIds);
-          } else {
-            // Fallback para buscar nas notas se não encontrar nas delivery_infos
-            salesQuery = salesQuery.ilike('notes', `%${searchTerm}%`);
-          }
-        }
-      }
-  
-      const { data: salesData, error: salesError } = await salesQuery;
-  
-      if (salesError) throw salesError;
-  
-      if (!salesData?.length) {
-        setSales([]);
+        if (error) throw error;
+        setSales(data?.map(s => ({ ...s, delivery_info: s.delivery_infos?.[0] || null })) || []);
         return;
       }
   
-      // Agora buscamos as delivery_infos para as vendas encontradas
-      const saleIds = salesData.map(sale => sale.id);
+      // Consulta que simula LEFT JOIN com OR conditions
+      const { data: salesData, error: salesError } = await supabase
+        .from('sales')
+        .select('*')
+        .or(`sale_id.ilike.%${searchTerm}%`);
+  
       const { data: deliveryData, error: deliveryError } = await supabase
         .from('delivery_infos')
-        .select('*')
-        .in('sale_id', saleIds);
+        .select('*, sales!inner(*)')
+        .or(`customer_name.ilike.%${searchTerm}%,customer_phone.ilike.%${searchTerm}%`);
   
-      if (deliveryError) console.error('Error fetching delivery info:', deliveryError);
+      if (salesError || deliveryError) throw salesError || deliveryError;
   
-      // Combinamos os dados
-      const combinedData = salesData.map(sale => ({
-        ...sale,
-        delivery_info: deliveryData?.find(d => d.sale_id === sale.id) || null
-      }));
+      // Combinar resultados e remover duplicatas
+      const salesFromDelivery = deliveryData?.map(d => ({ ...d.sales, delivery_info: d })) || [];
+      const allSales = [...(salesData || []), ...salesFromDelivery];
+      
+      const uniqueSales = Array.from(new Map(
+        allSales.map(s => [s.id, s])
+      ).values());
   
-      setSales(combinedData);
-
+      setSales(uniqueSales.slice(0, 20)); // Limitar a 20 resultados
+  
     } catch (error) {
-      console.error('Error fetching sales:', error);
-      setError('Erro ao carregar vendas. Verifique o console para detalhes.');
+      console.error('Erro ao buscar vendas:', error);
+      setError('Erro ao buscar vendas. Verifique o console.');
     } finally {
       setLoading(false);
     }
@@ -108,7 +87,7 @@ export default function ConsultaVendasPage() {
 
   useEffect(() => {
     fetchSales();
-  }, [searchTerm, searchType]);
+  }, [searchTerm]);
 
   // Função para formatar a data de entrega
   const formatDeliveryDate = (sale: Sale) => {
@@ -162,43 +141,23 @@ export default function ConsultaVendasPage() {
         )}
         {/* Filtros de pesquisa */}
         <div className="mb-6 bg-gray-800 p-4 rounded-lg">
-          <div className="flex flex-col md:flex-row gap-4 mb-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Termo de Pesquisa
-              </label>
-              <div className="relative">
+            <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                Pesquisar vendas
+                </label>
+                <div className="relative">
                 <input
-                  type="text"
-                  placeholder={
-                    searchType === 'sale' ? 'Número do pedido...' :
-                    searchType === 'customer' ? 'Nome do cliente...' :
-                    'Telefone do cliente...'
-                  }
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full p-3 pl-10 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                    type="text"
+                    placeholder="N° pedido, nome ou telefone do cliente..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full p-3 pl-10 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
                 />
                 <FiSearch className="absolute left-3 top-3.5 text-gray-400" />
-              </div>
+                </div>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Tipo de Pesquisa
-              </label>
-              <select
-                value={searchType}
-                onChange={(e) => setSearchType(e.target.value as 'sale' | 'customer' | 'phone')}
-                className="p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-              >
-                <option value="sale">Número do Pedido</option>
-                <option value="customer">Nome do Cliente</option>
-                <option value="phone">Telefone</option>
-              </select>
-            </div>
-          </div>
         </div>
+ 
 
         {/* Resultados */}
         <div className="bg-gray-800 rounded-lg overflow-hidden">
@@ -223,14 +182,7 @@ export default function ConsultaVendasPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <FiFileText className="text-blue-400" />
                         <span className="font-medium">#{extractOrderNumber(sale.id)}</span>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          sale.status === 'completed' ? 'bg-green-900 text-green-300' :
-                          sale.status === 'cancelled' ? 'bg-red-900 text-red-300' :
-                          'bg-yellow-900 text-yellow-300'
-                        }`}>
-                          {sale.status === 'completed' ? 'Concluído' :
-                           sale.status === 'cancelled' ? 'Cancelado' : 'Pendente'}
-                        </span>
+                        <OrderBadge status={OrderStatus[sale.status as keyof typeof OrderStatus]} />
                       </div>
                       
                       <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">

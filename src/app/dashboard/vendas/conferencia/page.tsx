@@ -266,7 +266,7 @@ export default function CheckoutPage() {
           payment_method: paymentMethod,
           subtotal: getSubTotalNumeric(),
           total: calcularValorTotal(),
-          status: 'pending',
+          status: 'PENDING',
           notes: observations + getObservationsDetails(), 
         }])
         .select()
