@@ -191,10 +191,12 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
   
       // Atualiza o estado local de forma mais eficiente
       setSale(prev => {
+        console.log(prev)
+        console.log(newStatus)
         if (!prev) return null;
         return {
           ...prev,
-          status: newStatus // Usa o valor do enum diretamente
+          status: getStatusFromTranslation(newStatus)
         };
       });
       
