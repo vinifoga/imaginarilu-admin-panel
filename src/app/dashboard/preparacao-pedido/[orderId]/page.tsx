@@ -41,20 +41,9 @@ export default function OrderPreparationPage({ params }: { params: { orderId: st
   const [loading, setLoading] = useState(true);
   const [preparing, setPreparing] = useState(false);
   const [allItemsPrepared, setAllItemsPrepared] = useState(false);
-  const [orderId, setOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Extrai o orderId dos params de forma assíncrona
-    const getOrderId = async () => {
-      const resolvedParams = await Promise.resolve(params);
-      setOrderId(resolvedParams.orderId);
-    };
-
-    getOrderId();
-  }, [params]);
-
-  useEffect(() => {
-    if (!orderId) return;
+    if (!params.orderId) return;
 
     const fetchOrder = async () => {
       setLoading(true);
@@ -63,7 +52,7 @@ export default function OrderPreparationPage({ params }: { params: { orderId: st
         const { data: orderData, error: orderError } = await supabase
           .from('sales')
           .select('*')
-          .eq('id', orderId)
+          .eq('id', params.orderId)
           .single();
 
         if (orderError) throw orderError;
@@ -72,7 +61,7 @@ export default function OrderPreparationPage({ params }: { params: { orderId: st
         const { data: itemsData, error: itemsError } = await supabase
           .from('sale_items')
           .select('*')
-          .eq('sale_id', orderId);
+          .eq('sale_id', params.orderId);
 
         if (itemsError) throw itemsError;
 
@@ -109,16 +98,16 @@ export default function OrderPreparationPage({ params }: { params: { orderId: st
     };
 
     fetchOrder();
-  }, [orderId]); // Agora depende do orderId em vez de params.orderId
+  }, [params.orderId]); 
 
   const updateOrderStatus = async (status: string) => {
-    if (!orderId) return;
+    if (!params.orderId) return;
 
     try {
       const { error } = await supabase
         .from('sales')
         .update({ status })
-        .eq('id', orderId);
+        .eq('id', params.orderId);
 
       if (error) throw error;
     } catch (error) {
