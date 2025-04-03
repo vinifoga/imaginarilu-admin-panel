@@ -74,10 +74,6 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
   };
 
   useEffect(() => {
-    console.log('Sale status updated:', sale?.status);
-  }, [sale?.status]);
-
-  useEffect(() => {
     const fetchSaleData = async () => {
       try {
         // Buscar dados da venda
@@ -227,26 +223,7 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
   };
   
   const getStatusEnum = (statusString: string): OrderStatus => {
-    // Verifica se o status do banco existe diretamente no enum
-    if (Object.values(OrderStatus).includes(statusString as OrderStatus)) { 
-      return statusString as OrderStatus;
-    }
-    
-    // Caso contrário, faz um mapeamento manual se necessário
-    const statusMap: Record<string, OrderStatus> = {
-      'PENDING': OrderStatus.PENDING,
-      'PROCESSING': OrderStatus.PROCESSING,
-      'AWAITING_PAYMENT': OrderStatus.AWAITING_PAYMENT,
-      'PAID': OrderStatus.PAID,
-      'SHIPPED': OrderStatus.SHIPPED,
-      'DELIVERED': OrderStatus.DELIVERED,
-      'CANCELED': OrderStatus.CANCELED,
-      'RETURNED': OrderStatus.RETURNED,
-      'REFUNDED': OrderStatus.REFUNDED,
-      'AWAITING_PICKUP': OrderStatus.AWAITING_PICKUP
-    };
-  
-    return statusMap[statusString.toLowerCase()];
+    return OrderStatus[statusString as keyof typeof OrderStatus];
   };
 
   return (
