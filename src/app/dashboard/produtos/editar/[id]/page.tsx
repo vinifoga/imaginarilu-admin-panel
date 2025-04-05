@@ -152,44 +152,48 @@ export default function EditarProdutoPage() {
           .from('product_components')
           .select('component_product_id, quantity')
           .eq('parent_product_id', id);
-
+      
         if (componentesError) throw componentesError;
-
+      
         const produtosComponentes = await Promise.all(
           componentesData.map(async (componente) => {
-            // Busca o produto componente com suas imagens (limitando a 1 imagem por produto)
-            const { data: produtoComponente, error: produtoError } = await supabase
-              .from('products')
-              .select(`
-                *,
-                product_images!inner(
-                  image_url
-                )
-              `)
-              .eq('id', componente.component_product_id)
-              .limit(1, { foreignTable: 'product_images' }) // Limita a 1 imagem
-              .single();
-
-            if (produtoError) throw produtoError;
-
-            // Extrai a primeira imagem (se existir)
-            const image_url = produtoComponente.product_images?.[0]?.image_url || null;
-
-            // Remove o array de product_images do objeto principal para manter a estrutura consistente
-            const { ...produtoSemImagens } = produtoComponente;
-
-            return { 
-              product: {
-                ...produtoSemImagens,
-                image_url // Adiciona apenas a primeira imagem
-              }, 
-              quantity: componente.quantity 
-            };
+            try {
+              // Busca o produto componente
+              const { data: produtoComponente, error: produtoError } = await supabase
+                .from('products')
+                .select(`*`)
+                .eq('id', componente.component_product_id)
+                .single();
+      
+              if (produtoError) throw produtoError;
+      
+              // Busca a primeira imagem do produto componente (se existir)
+              const { data: imagemData, error: imagemError } = await supabase
+                .from('product_images')
+                .select('image_url')
+                .eq('product_id', componente.component_product_id)
+                .limit(1);
+      
+              if (imagemError) throw imagemError;
+      
+              return { 
+                product: {
+                  ...produtoComponente,
+                  image_url: imagemData?.[0]?.image_url || null
+                }, 
+                quantity: componente.quantity 
+              };
+            } catch (error) {
+              console.error('Erro ao buscar produto componente:', error);
+              return null;
+            }
           })
         );
-
-        setComponentes(produtosComponentes);
-        calcularValorCompra(produtosComponentes);
+      
+        // Filtra quaisquer resultados nulos (de erros) e tipa corretamente
+        const componentesValidos = produtosComponentes.filter(Boolean) as ComponentProduct[];
+        setComponentes(componentesValidos);
+        calcularValorCompra(componentesValidos);
       }
     } catch (error) {
       console.error('Erro ao buscar produto:', error);
@@ -403,11 +407,7 @@ export default function EditarProdutoPage() {
     const calcularPorcentagemLucro = (valorVenda: string, valorCompra: string, field?: string) => {
       const valorCompraNumerico = parseMoeda(valorCompra);
       const valorVendaNumerico = parseMoeda(valorVenda);
-  
-      console.log("valorCompraNumerico: ", valorCompraNumerico);
-      console.log("valorVendaNumerico: ", valorVendaNumerico);
-      console.log("field: ", field);
-    
+      
       if (isNaN(valorCompraNumerico) || isNaN(valorVendaNumerico)) {
         setPorcentagemLucro('');
         return;
@@ -971,7 +971,7 @@ export default function EditarProdutoPage() {
                     onClick={() => adicionarProduto(produto, 1)} // Adiciona o produto com quantidade 1
                   >
                     <div className="flex-1">
-                      <p className="text-gray-300">{produto.description}</p>
+                      <p className="text-gray-300">{produto.name}</p>
                       <p className="text-sm text-gray-400">Código: {produto.barcode}</p>
                       <p className="text-sm text-gray-400">SKU: {produto.sku}</p>
                       <p className="text-sm text-gray-400">Valor: {formatarMoeda(produto.sale_price)}</p>
@@ -1004,14 +1004,14 @@ export default function EditarProdutoPage() {
                       {componente.product.image_url ? (
                         <img
                           src={componente.product.image_url}
-                          alt={componente.product.description}
+                          alt={componente.product.name}
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <PlaceholderImage /> // Usa o SVG como placeholder
                       )}
                     </div>
-                    <span className="text-gray-300">{componente.product.description}</span>
+                    <span className="text-gray-300">{componente.product.name}</span>
                   </div>
 
                   {/* Quantidade, valor e botão de remover */}
