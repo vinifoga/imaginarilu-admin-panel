@@ -35,6 +35,15 @@ interface SaleItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+  is_composition?: boolean;
+  components?: {
+    product_id: string;
+    product_name: string;
+    product_image: string | null;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+  }[];
 }
 
 interface DeliveryInfo {
@@ -56,6 +65,36 @@ interface DeliveryInfo {
 
 interface SaleDetailsProps {
     backRoute?: string;
+  }
+
+  interface Product {
+    id: string;
+    name: string;
+    is_composition: boolean;
+  }
+  
+  interface SaleItemWithProduct {
+    id: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+    product_id: string;
+    products: Product | null;
+  }
+  
+  interface ProductImage {
+    image_url: string;
+  }
+  
+  interface NestedProduct {
+    name: string;
+    product_images?: ProductImage[];
+  }
+  
+  interface ProductComponentDB {
+    component_product_id: string;
+    quantity: number;
+    products?: NestedProduct | null;
   }
   
 
@@ -89,40 +128,88 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
 
         // Buscar itens da venda
         const { data: itemsData, error: itemsError } = await supabase
-          .from('sale_items')
-          .select(`
-            id,
-            quantity,
-            unit_price,
-            total_price,
-            product_id
-          `)
-          .eq('sale_id', id) as { data: SaleItem[] | null, error: PostgrestError | null };
+  .from('sale_items')
+  .select(`
+    id,
+    quantity,
+    unit_price,
+    total_price,
+    product_id,
+    products (
+      name,
+      is_composition
+    )
+  `)
+  .eq('sale_id', id) as { data: unknown[] | null, error: PostgrestError | null };
 
-        if (itemsError) throw itemsError;
-        
-        if(itemsData !== null){
-          // Buscar imagem dos itens
-          const formattedItems = await Promise.all(
-            itemsData.map(async (item) => {
-              if (typeof item === 'object' && item !== null) {
-                const { data: imagensData, error: imagensError } = await supabase
-                  .from('product_images')
-                  .select('image_url')
-                  .eq('product_id', item.product_id)
-                  .limit(1);
-    
-                if (imagensError) {
-                  console.error('Erro ao buscar imagens:', imagensError);
-                }
-    
-                return {
-                  ...item,
-                  product_name: item.product_name,
-                  product_image: imagensData?.[0]?.image_url || null,
-                };
+if (itemsError) throw itemsError;
+
+if (itemsData !== null) {
+  const formattedItems = await Promise.all(
+    (itemsData as SaleItemWithProduct[]).map(async (item) => {
+      // Buscar imagem do item principal
+      const { data: imagensData } = await supabase
+        .from('product_images')
+        .select('image_url')
+        .eq('product_id', item.product_id)
+        .limit(1);
+
+      const baseItem = {
+        ...item,
+        product_name: item.products?.name || '',
+        product_image: imagensData?.[0]?.image_url || null,
+        is_composition: item.products?.is_composition || false,
+      };
+
+      // Se for um produto composto, buscar seus componentes
+      if (item.products?.is_composition) {
+        const { data: componentsData } = await supabase
+          .from('product_components')
+          .select(`
+            component_product_id,
+            quantity,
+            products:component_product_id (
+              name,
+              product_images (
+                image_url
+              )
+            )
+          `)
+          .eq('parent_product_id', item.product_id);
+
+          const components = await Promise.all(
+            (componentsData as ProductComponentDB[] | null)?.map(async (component) => {
+            // Buscar preço do componente
+            const { data: priceData } = await supabase
+              .from('products')
+              .select('sale_price')
+              .eq('id', component.component_product_id)
+              .single();
+
+            // Acessar propriedades com segurança
+            const productName = component.products?.name || '';
+            const productImage = component.products?.product_images?.[0]?.image_url || null;
+            const componentPrice = priceData?.sale_price || 0;
+            const componentQuantity = component.quantity * item.quantity;
+
+            return {
+              product_id: component.component_product_id,
+              product_name: productName,
+              product_image: productImage,
+              quantity: componentQuantity,
+              unit_price: componentPrice,
+              total_price: componentPrice * componentQuantity,
+            };
+          }) || []
+        );
+
+        return {
+          ...baseItem,
+          components,
+        };
               }
-              return item;
+
+              return baseItem;
             })
           );
 
@@ -291,8 +378,10 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
                     <th className="px-4 py-2 text-right text-gray-700">Total</th>
                   </tr>
                 </thead>
+                
                 <tbody>
-                  {items.map((item, index) => (
+                {items.map((item, index) => (
+                  <>
                     <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
@@ -307,7 +396,7 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
                               />
                             </div>
                           )}
-                          <span className="text-sm">{item.product_name}</span>
+                          <span className="text-sm text-gray-700">{item.product_name}</span>
                         </div>
                       </td>
                       <td className="px-4 py-2 text-right text-gray-500 text-sm">{item.quantity}</td>
@@ -316,8 +405,37 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
                         {formatarMoeda(item.total_price)}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
+                    
+                    {/* Renderizar componentes se existirem */}
+                    {item.components?.map((component, compIndex) => (
+                      <tr key={`${item.id}-${compIndex}`} className="bg-gray-100">
+                        <td className="px-4 py-2 pl-10">
+                          <div className="flex items-center gap-2">
+                            {component.product_image && (
+                              <div className="w-6 h-6 rounded overflow-hidden">
+                                <Image
+                                  src={component.product_image}
+                                  alt={component.product_name || `Component image ${compIndex + 1}`}
+                                  width={24}
+                                  height={24}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
+                            <span className="text-xs text-gray-700">{component.product_name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-right text-gray-500 text-xs">{component.quantity}</td>
+                        <td className="px-4 py-2 text-right text-gray-500 text-xs">{formatarMoeda(component.unit_price)}</td>
+                        <td className="px-4 py-2 text-right text-gray-500 font-medium text-xs">
+                          {formatarMoeda(component.total_price)}
+                        </td>
+                      </tr>
+                    ))}
+                  </>
+                ))}
+              </tbody>
+
               </table>
             </div>
           </div>
