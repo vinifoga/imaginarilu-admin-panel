@@ -3,7 +3,7 @@ export enum OrderStatus {
   PROCESSING = "Em Processamento",
   AWAITING_PAYMENT = "Aguardando Pagamento",
   PAID = "Pago",
-  SHIPPED = "Enviado",
+  PACKED = "Embalado",
   DELIVERED = "Entregue",
   CANCELED = "Cancelado",
   RETURNED = "Devolvido",

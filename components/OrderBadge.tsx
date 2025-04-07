@@ -18,7 +18,7 @@ export function OrderBadge({ status, onChange }: BadgeProps) {
     [OrderStatus.PROCESSING]: "bg-blue-500 text-white",
     [OrderStatus.AWAITING_PAYMENT]: "bg-orange-500 text-white",
     [OrderStatus.PAID]: "bg-green-500 text-white",
-    [OrderStatus.SHIPPED]: "bg-indigo-500 text-white",
+    [OrderStatus.PACKED]: "bg-indigo-500 text-white",
     [OrderStatus.DELIVERED]: "bg-teal-500 text-white",
     [OrderStatus.CANCELED]: "bg-red-500 text-white",
     [OrderStatus.RETURNED]: "bg-gray-500 text-white",

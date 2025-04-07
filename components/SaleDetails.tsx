@@ -243,6 +243,21 @@ const { id } = useParams();
     fetchSaleData();
   }, [id]);
 
+  useEffect(() => {
+    // Verifica se veio da preparação de pedido
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromPreparation = urlParams.get('fromPreparation');
+    
+    if (fromPreparation === 'true') {
+      // Pequeno delay para garantir que o componente está renderizado
+      setTimeout(() => {
+        window.print();
+        // Volta após imprimir
+        setTimeout(() => router.push('/dashboard/pedidos-pendentes'), 1000);
+      }, 500);
+    }
+  }, [router]);
+
   const handlePrint = () => {
     window.print();
   };

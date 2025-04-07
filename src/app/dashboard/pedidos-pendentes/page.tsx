@@ -196,7 +196,7 @@ export default function PendingOrdersPage() {
                       {order.sale_type === 'delivery' 
                         ? `Cliente: ${order.customer_name || 'Não informado'}` 
                         : 'Retirada no local'}
-                    </p>                    <p className="font-bold mt-2">Total: R$ {order.total?.toFixed(2)}</p>
+                    </p>                    <p className="font-bold mt-2">Total: R$ {order.total?.toFixed(2).replace('.', ',')}</p>
                   </div>
                   <button
                   onClick={() => navigateToPreparation(order.id)}
@@ -213,7 +213,7 @@ export default function PendingOrdersPage() {
                         <span>
                           {item.quantity}x {item.product.name}
                         </span>
-                        <span>R$ {(item.unit_price * item.quantity).toFixed(2)}</span>
+                        <span>R$ {(item.unit_price * item.quantity).toFixed(2).replace('.',',')}</span>
                       </li>
                     ))}
                   </ul>
@@ -232,7 +232,7 @@ export default function PendingOrdersPage() {
       <div className="mb-20"></div>
 
       <button
-        onClick={() => router.back()}
+        onClick={() => router.push('/dashboard')}
         className="fixed bottom-6 left-6 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700"
       >
         <LeftArrowIcon />

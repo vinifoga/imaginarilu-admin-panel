@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
 import { formatarMoeda } from '@/utils/moeda';
-import { FiSearch, FiFileText, FiUser, FiCalendar, FiDollarSign, FiArrowRight, FiTruck, FiHome } from 'react-icons/fi';
+import { FiSearch, FiFileText, FiUser, FiCalendar, FiArrowRight, FiTruck, FiHome } from 'react-icons/fi';
 import { ClipLoader } from 'react-spinners';
 import { OrderStatus } from '@/lib/orderStatus';
 import { OrderBadge } from '../../../../components/OrderBadge';
@@ -204,7 +204,6 @@ export default function ConsultaVendasPage() {
                         <span>{new Date(sale.created_at).toLocaleDateString('pt-BR')}</span>
                       </div>
                       <div className="flex items-center justify-end gap-2 text-lg font-bold text-blue-400">
-                        <FiDollarSign />
                         <span>{formatarMoeda(sale.total)}</span>
                       </div>
                     </div>
