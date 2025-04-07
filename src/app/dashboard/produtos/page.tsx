@@ -19,6 +19,7 @@ interface Produto {
   barcode?: string; // Adicionando código de barras como opcional
   image_url?: string; // Adicionando URL da imagem como opcional
   categorias?: Categoria[]; // Adicionando categorias como opcional
+  active?: boolean;
 }
 
 interface Categoria {
@@ -35,6 +36,7 @@ export default function ProdutosPage() {
   const [termoPesquisa, setTermoPesquisa] = useState<string>('');
   const [mostrarScanner, setMostrarScanner] = useState(false);
   const scannerModalRef = useRef<{ stopScanner: () => void } | null>(null);
+  const [mostrarInativos, setMostrarInativos] = useState(false);
   const { setLoading } = useLoading();
   
 
@@ -43,11 +45,17 @@ export default function ProdutosPage() {
     const fetchProdutos = async () => {
       console.log('Buscando produtos...');
       setLoading(true);
-      const { data: produtosData, error: produtosError } = await supabase
+      let query = supabase
         .from('products')
         .select('*')
         .order('name', { ascending: true });
-  
+
+      if (!mostrarInativos) {
+        query = query.eq('active', true);
+      }
+
+      const { data: produtosData, error: produtosError } = await query;
+
       if (produtosError) {
         console.error('Erro ao buscar produtos:', produtosError);
       } else {
@@ -106,7 +114,7 @@ export default function ProdutosPage() {
   
     fetchProdutos();
     fetchCategorias();
-  }, []);
+  }, [mostrarInativos]);
 
   useEffect(() => {
     return () => {
@@ -168,19 +176,19 @@ const produtosFiltrados = termoPesquisa
     }
   };
 
-  const excluirProduto = async (produtoId: string) => {
-    const confirmacao = window.confirm('Tem certeza que deseja excluir este produto?');
-    
+  const inativarProduto = async (produtoId: string) => {
+    const confirmacao = window.confirm('Tem certeza que deseja inativar este produto?');
+  
     if (confirmacao) {
       const { error } = await supabase
         .from('products')
-        .delete()
+        .update({ active: false })
         .eq('id', produtoId);
   
       if (error) {
-        console.error('Erro ao excluir produto:', error);
+        console.error('Erro ao inativar produto:', error);
       } else {
-        // Atualiza a lista de produtos após a exclusão
+        // Atualiza a lista de produtos após a inativação
         setProdutos((prevProdutos) => prevProdutos.filter((produto) => produto.id !== produtoId));
       }
     }
@@ -231,6 +239,13 @@ const produtosFiltrados = termoPesquisa
           >
             Filtrar por Categoria
           </button>
+          {/* Adicione este botão junto com os outros controles de filtro */}
+            <button
+            onClick={() => setMostrarInativos(!mostrarInativos)}
+            className={`px-4 py-2 rounded-lg ${mostrarInativos ? 'bg-red-600' : 'bg-gray-600'} text-white hover:bg-opacity-80 mr-2`}
+            >
+            {mostrarInativos ? 'Mostrar Ativos' : 'Mostrar Inativos'}
+          </button>
 
           {/* Lista de Categorias (Filtro) */}
           {mostrarFiltro && (
@@ -263,6 +278,11 @@ const produtosFiltrados = termoPesquisa
             className="bg-white p-4 rounded-lg shadow-md cursor-pointer hover:bg-gray-50 flex items-center"
             onClick={() => router.push(`/dashboard/produtos/editar/${produto.id}`)}
           >
+             {!produto.active && (
+              <span className="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded">
+                Inativo
+              </span>
+            )}
             {/* Imagem do Produto (lado esquerdo) */}
             <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center border-2 mr-4">
               {produto.image_url ? (
@@ -298,29 +318,30 @@ const produtosFiltrados = termoPesquisa
 
             {/* Ícone de Lixeira (lado direito) */}
             <button
-              onClick={(e) => {
-                e.stopPropagation(); // Impede que o clique no botão propague para o card
-                excluirProduto(produto.id);
-                console.log('Excluir produto:', produto.id);
-              }}
-              className="text-red-500 hover:text-red-700 ml-4"
+            onClick={(e) => {
+              e.stopPropagation();
+              inativarProduto(produto.id);
+            }}
+            className="text-red-500 hover:text-red-700 ml-4"
+            title={produto.active ? 'Inativar Produto' : 'Produto Inativo'}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
           </div>
+          
         ))}
       </div>
 

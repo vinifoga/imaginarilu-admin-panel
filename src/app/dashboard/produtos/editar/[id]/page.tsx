@@ -36,6 +36,7 @@ interface Product {
   quantity: number;
   is_composition: boolean;
   sale_price_virtual_store: number;
+  active: boolean;
 }
 
 interface ComponentProduct {
@@ -81,6 +82,8 @@ export default function EditarProdutoPage() {
   const [isComposition, setComposition] = useState(false);
   const [mostrarScanner, setMostrarScanner] = useState(false);
   const [mostrarScannerAddProduto, setMostrarScannerAddProduto] = useState(false);
+  const [active, setActive] = useState<boolean>(true);
+
 
   // Função para buscar os dados do produto
   const fetchProduto = async () => {
@@ -100,6 +103,7 @@ export default function EditarProdutoPage() {
       setDescricao(produto.description ? produto.description : '');
       setCodigoBarras(produto.barcode ? produto.barcode : '');
       setSku(produto.sku ? produto.sku : '');
+      setActive(produto.active !== false);
       if(produto.is_composition){
         setAbaAtiva('composto');
         setValorCompraComposto(parseMoeda(formatarMoeda(produto.cost_price)));
@@ -237,6 +241,7 @@ export default function EditarProdutoPage() {
           profit_margin_virtual_shop: (porcentagemLucroLojaVirtual.replace('%','').replace(',', '.')),
           profit_margin_shopee: (porcentagemLucroShopee.replace('%','').replace(',', '.')),
           profit_margin_mercado_livre: (porcentagemLucroMercadoLivre.replace('%','').replace(',', '.')),
+          active: active,
         })
         .eq('id', id);
 
@@ -596,7 +601,8 @@ export default function EditarProdutoPage() {
         sell_online,
         quantity,
         is_composition,
-        sale_price_virtual_store
+        sale_price_virtual_store,
+        active
         `)
         .or(`barcode.ilike.%${termo}%,sku.ilike.%${termo}%,description.ilike.%${termo}%`)
         .neq('is_composition', true)  // Adiciona a condição onde is_composition não é true
@@ -627,7 +633,8 @@ export default function EditarProdutoPage() {
           sell_online: produto.sell_online,
           quantity: produto.quantity,
           is_composition: produto.is_composition,
-          sale_price_virtual_store: produto.sale_price_virtual_store
+          sale_price_virtual_store: produto.sale_price_virtual_store,
+          active: produto.active,
         }));
         setResultadosPesquisa(produtosComImagem);
       }
@@ -1415,6 +1422,16 @@ export default function EditarProdutoPage() {
                   </div>
                 </div>
                 )}
+
+                <div className="flex items-center mt-4">
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={(e) => setActive(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <label className="text-sm font-medium text-gray-300">Produto Ativo</label>
+                </div>
 
        {/* Botão de Voltar no canto inferior esquerdo */}
       <button

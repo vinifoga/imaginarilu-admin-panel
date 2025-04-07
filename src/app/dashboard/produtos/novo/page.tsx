@@ -36,6 +36,7 @@ interface Product {
   quantity: number;
   is_composition: boolean;
   sale_price_virtual_store: number;
+  active: boolean;
 }
 
 interface ComponentProduct {
@@ -79,6 +80,8 @@ export default function NovoProdutoPage() {
   const scannerModalRef = useRef<{ stopScanner: () => void } | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number[]>([]);
+  const [active, setActive] = useState<boolean>(true);
+
   
   
 
@@ -381,6 +384,7 @@ export default function NovoProdutoPage() {
           profit_margin_virtual_shop: (porcentagemLucroLojaVirtual.replace('%','').replace(',', '.')),
           profit_margin_shopee: (porcentagemLucroShopee.replace('%','').replace(',', '.')),
           profit_margin_mercado_livre: (porcentagemLucroMercadoLivre.replace('%','').replace(',', '.')),
+          active: active,
         },
       ])
       .select();
@@ -519,7 +523,8 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
         sell_online,
         quantity,
         is_composition,
-        sale_price_virtual_store
+        sale_price_virtual_store,
+        active
       `)
       .or(`barcode.ilike.%${termo}%,sku.ilike.%${termo}%,description.ilike.%${termo}%`)
       .neq('is_composition', true)  // Adiciona a condição onde is_composition não é true
@@ -549,7 +554,8 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
         sell_online: produto.sell_online,
         quantity: produto.quantity,
         is_composition: produto.is_composition,
-        sale_price_virtual_store: produto.sale_price_virtual_store
+        sale_price_virtual_store: produto.sale_price_virtual_store,
+        active: produto.active,
       }));
       setResultadosPesquisa(produtosComImagem);
     }
@@ -1337,6 +1343,17 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                   </div>
                 </div>
                 )}
+
+                {/* Campo Ativo/Inativo */}
+                <div className="flex items-center mt-4">
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={(e) => setActive(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <label className="text-sm font-medium text-gray-300">Produto Ativo</label>
+                </div>
 
        {/* Botão de Voltar no canto inferior esquerdo */}
       <button
