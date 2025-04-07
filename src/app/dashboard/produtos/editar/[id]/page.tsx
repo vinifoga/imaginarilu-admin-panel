@@ -8,6 +8,7 @@ import { formatarMoeda, formatarPorcentagem, parseMoeda } from '@/utils/moeda';
 import Select from 'react-select';
 import PlaceholderImage from '../../../../../../components/PlaceholderImage';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
+import SaveIcon from '../../../../../../components/SaveIcon';
 
 interface Categoria {
   id: string;
@@ -1436,7 +1437,7 @@ export default function EditarProdutoPage() {
        {/* Botão de Voltar no canto inferior esquerdo */}
       <button
         onClick={() => router.push('/dashboard/produtos')}
-        className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+        className="fixed bottom-0 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -1454,15 +1455,19 @@ export default function EditarProdutoPage() {
         </svg>
       </button>
 
-        {/* Botão Salvar */}
+      {/* Botão Flutuante para salvar edições */}
+      <button
+        onClick={salvarAlteracoes}
+        disabled={loading}     
+        className="fixed bottom-0 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+      >
+        <SaveIcon />
+      </button>
+      
+      <div className="mb-20"></div>
+
         <div className="flex justify-end">
-          <button
-            onClick={salvarAlteracoes}
-            disabled={loading}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-400"
-          >
-            {loading ? 'Salvando alterações...' : 'Salvar alterações'}
-          </button>
+
           {mostrarScanner && (
             <BarcodeScannerModal
               ref={scannerModalRef}

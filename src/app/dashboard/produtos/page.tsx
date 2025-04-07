@@ -344,6 +344,7 @@ const produtosFiltrados = termoPesquisa
           
         ))}
       </div>
+      <div className="mb-20"></div>
 
       {/* Botão de Voltar no canto inferior esquerdo */}
       <button

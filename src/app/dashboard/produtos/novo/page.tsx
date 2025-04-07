@@ -8,6 +8,7 @@ import { formatarMoeda, formatarPorcentagem, parseMoeda } from '@/utils/moeda';
 import Select from 'react-select';
 import PlaceholderImage from '../../../../../components/PlaceholderImage';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
+import SaveIcon from '../../../../../components/SaveIcon';
 
 interface Categoria {
   id: string;
@@ -1139,6 +1140,17 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                     <label className="text-sm font-medium text-gray-300">Mercado Livre</label>
                   </div>
                 </div>
+
+                {/* Campo Ativo/Inativo */}
+                <div className="flex items-center mt-4">
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={(e) => setActive(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <label className="text-sm font-medium text-gray-300">Produto Ativo</label>
+                </div>
         
                 {/* Campos porcentagem e valor Loja Virtual - Simples*/}
                 {abaAtiva === 'simples' && sellOnline && (
@@ -1344,16 +1356,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                 </div>
                 )}
 
-                {/* Campo Ativo/Inativo */}
-                <div className="flex items-center mt-4">
-                  <input
-                    type="checkbox"
-                    checked={active}
-                    onChange={(e) => setActive(e.target.checked)}
-                    className="mr-2"
-                  />
-                  <label className="text-sm font-medium text-gray-300">Produto Ativo</label>
-                </div>
+                
 
        {/* Botão de Voltar no canto inferior esquerdo */}
       <button
@@ -1376,15 +1379,18 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
         </svg>
       </button>
 
-        {/* Botão Salvar */}
-        <div className="flex justify-end">
+      {/* Botão Flutuante para salvar edições */}
           <button
             onClick={salvarProduto}
-            disabled={loading}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-400"
+            disabled={loading}     
+            className="fixed bottom-0 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
           >
-            {loading ? 'Salvando...' : 'Salvar'}
+            <SaveIcon />
           </button>
+
+        <div className="mb-20"></div>
+        <div className="flex justify-end">
+          
           {mostrarScanner && (
             <BarcodeScannerModal
               ref={scannerModalRef}

@@ -230,6 +230,8 @@ export default function ConsultaVendasPage() {
             </div>
           )}
         </div>
+        <div className="mb-20"></div>
+
 
         {/* Botão de Voltar */}
         <button
@@ -251,6 +253,7 @@ export default function ConsultaVendasPage() {
             />
           </svg>
         </button>
+        
       </div>
     </div>
   );

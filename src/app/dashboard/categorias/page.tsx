@@ -113,6 +113,7 @@ export default function CategoriasPage() {
           </div>
         ))}
       </div>
+      <div className="mb-20"></div>
 
       {/* Botão de Voltar no canto inferior esquerdo */}
       <button
