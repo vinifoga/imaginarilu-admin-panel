@@ -96,10 +96,9 @@ interface SaleDetailsProps {
     quantity: number;
     products?: NestedProduct | null;
   }
-  
 
 export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDetailsProps) {
-  const { id } = useParams();
+const { id } = useParams();
   const router = useRouter();
   const receiptRef = useRef<HTMLDivElement>(null);
   const [sale, setSale] = useState<Sale | null>(null);
@@ -314,33 +313,39 @@ if (itemsData !== null) {
   const getStatusEnum = (statusString: string): OrderStatus => {
     return OrderStatus[statusString as keyof typeof OrderStatus];
   };
+  
+  function formatarHora(delivery_time: string): React.ReactNode {
+    const [hours, minutes] = delivery_time.split(':');
+    return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+  }
 
   return (
-    <div className="min-h-screen p-6 bg-gray-900 text-white">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen p-2 md:p-6 bg-gray-900 text-white print:bg-white print:text-black">
+      <div className="max-w-4xl mx-auto print:max-w-none">
         <div 
           ref={receiptRef}
-          className="bg-white p-8 rounded-lg shadow-lg print:shadow-none print:p-0"
+          className="bg-white p-4 md:p-8 rounded-lg shadow-lg print:shadow-none print:p-0 print:rounded-none"
         >
-          {/* Cabeçalho com badge de tipo e imagens */}
-          <div className="flex flex-col items-center mb-6">
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-4 ${
+          {/* Cabeçalho simplificado para impressão */}
+          <div className="flex flex-col items-center mb-4 print:mb-2">
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs md:text-sm font-medium mb-3 print:mb-1 ${
               sale.sale_type === 'delivery' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
             }`}>
-              {sale.sale_type === 'delivery' ? <FiTruck /> : <FiHome />}
+              {sale.sale_type === 'delivery' ? <FiTruck size={14} /> : <FiHome size={14} />}
               <span>{sale.sale_type === 'delivery' ? 'Entrega' : 'Retira'}</span>
               <OrderBadge 
                 status={getStatusEnum(sale.status)} 
                 onChange={handleStatusChange}
                 key={sale.status}
+                // Esconde o badge na impressão
               />
             </div>
 
-            
+            {/* Mostra apenas 1 imagem principal na impressão */}
             {getTopItemsImages().length > 0 && (
-              <div className="flex justify-center gap-4">
-                {getTopItemsImages().map((item, index) => (
-                  <div key={index} className="w-20 h-20 rounded-lg overflow-hidden border">
+              <div className="flex justify-center gap-2 print:gap-0 print:justify-start">
+                {getTopItemsImages().slice(0, 1).map((item, index) => (
+                  <div key={index} className="w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden border print:w-10 print:h-10 print:border-none">
                     <Image
                       src={item.product_image!}
                       alt={item.product_name || `Product image ${index + 1}`}
@@ -354,179 +359,231 @@ if (itemsData !== null) {
             )}
           </div>
 
-          {/* Número do pedido e data */}
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">Pedido - {getShortId(sale.id)}</h1>
-            <p className="text-gray-600 text-sm">{formatarData(sale.created_at)}</p>
+          {/* Número do pedido e data - simplificado para impressão */}
+          <div className="text-center mb-4 print:mb-2">
+            <h1 className="text-lg md:text-2xl font-bold text-gray-800 print:text-sm print:font-normal">
+              Pedido {getShortId(sale.id)}
+            </h1>
+            <p className="text-gray-600 text-xs md:text-sm print:text-xs">
+              {formatarData(sale.created_at)}
+            </p>
           </div>
 
+          {/* Cliente - apenas nome e telefone */}
           {sale.sale_type === 'delivery' && deliveryInfo && (
-            <div className="text-center mb-6">
-                <p className="text-gray-700 whitespace-pre-line">{deliveryInfo.customer_name} - {deliveryInfo.customer_phone}</p>
+            <div className="text-center mb-4 print:mb-2 print:text-left">
+              <p className="text-gray-700 text-sm print:text-xs whitespace-pre-line">
+                {deliveryInfo.customer_name} - {deliveryInfo.customer_phone}
+              </p>
             </div>
           )}
 
-          {/* Itens da venda */}
-          <div className="mb-6">
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
+          {/* Itens da venda - tabela simplificada */}
+          <div className="mb-4 print:mb-2">
+            <div className="border rounded-lg overflow-hidden print:border-none">
+              <table className="w-full print:text-xs">
+                <thead className="bg-gray-50 print:hidden">
                   <tr>
-                    <th className="px-4 py-2 text-left text-gray-700">Produto</th>
-                    <th className="px-4 py-2 text-right text-gray-700">Qtd</th>
-                    <th className="px-4 py-2 text-right text-gray-700">Unit.</th>
-                    <th className="px-4 py-2 text-right text-gray-700">Total</th>
+                    <th className="px-2 py-1 md:px-4 md:py-2 text-left text-gray-700">Produto</th>
+                    <th className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-700">Unit.</th>
+                    <th className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-700">Total</th>
                   </tr>
                 </thead>
                 
                 <tbody>
                 {items.map((item, index) => (
                   <>
-                    <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-4 py-2">
-                        <div className="flex items-center gap-2">
+                    {/* Item principal - sempre visível */}
+                    <tr key={item.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} print:!bg-transparent`}>
+                      <td className="px-2 py-1 md:px-4 md:py-2 print:py-0 print:border-none">
+                        <div className="flex items-center gap-1 print:gap-0">
                           {item.product_image && (
-                            <div className="w-8 h-8 rounded overflow-hidden">
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded overflow-hidden print:hidden">
                               <Image
                                 src={item.product_image}
-                                alt={item.product_name || `Product image ${index + 1}`}
+                                alt=""
                                 width={32}
                                 height={32}
                                 className="w-full h-full object-cover"
                               />
                             </div>
                           )}
-                          <span className="text-sm text-gray-700">{item.product_name}</span>
+                          <span className="text-sm md:text-base text-gray-700 print:text-xs print:font-bold">
+                            {item.quantity}x {item.product_name}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-right text-gray-500 text-sm">{item.quantity}</td>
-                      <td className="px-4 py-2 text-right text-gray-500 text-sm">{formatarMoeda(item.unit_price)}</td>
-                      <td className="px-4 py-2 text-right text-gray-500 font-medium text-sm">
+                      <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-500 text-sm print:hidden">
+                        {formatarMoeda(item.unit_price)}
+                      </td>
+                      <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-700 font-medium text-sm print:text-xs print:py-0 print:border-none">
                         {formatarMoeda(item.total_price)}
                       </td>
                     </tr>
-                    
-                    {/* Renderizar componentes se existirem */}
+
+                    {/* Componentes - visíveis em tela e impressão */}
                     {item.components?.map((component, compIndex) => (
-                      <tr key={`${item.id}-${compIndex}`} className="bg-gray-100">
-                        <td className="px-4 py-2 pl-10">
-                          <div className="flex items-center gap-2">
-                            {component.product_image && (
-                              <div className="w-6 h-6 rounded overflow-hidden">
-                                <Image
-                                  src={component.product_image}
-                                  alt={component.product_name || `Component image ${compIndex + 1}`}
-                                  width={24}
-                                  height={24}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-                            <span className="text-xs text-gray-700">{component.product_name}</span>
+                      <tr key={`${item.id}-${compIndex}`} className="print:!bg-transparent">
+                        <td className="px-2 py-1 md:px-4 md:py-2 pl-8 print:pl-4 print:py-0 print:border-none">
+                          <div className="flex items-center">
+                            <span className="text-xs text-gray-500 print:text-[0.65rem]">
+                              {component.quantity}x {component.product_name}
+                            </span>
                           </div>
-                        </td>
-                        <td className="px-4 py-2 text-right text-gray-500 text-xs">{component.quantity}</td>
-                        <td className="px-4 py-2 text-right text-gray-500 text-xs">{formatarMoeda(component.unit_price)}</td>
-                        <td className="px-4 py-2 text-right text-gray-500 font-medium text-xs">
-                          {formatarMoeda(component.total_price)}
                         </td>
                       </tr>
                     ))}
                   </>
                 ))}
               </tbody>
-
               </table>
             </div>
           </div>
 
-          {/* Resumo financeiro */}
-          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">            
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="space-y-1 text-sm">
+          {/* Resumo financeiro - uma coluna apenas */}
+          <div className="mb-4 print:mb-2">            
+            <div className="bg-gray-50 p-2 rounded-lg print:bg-transparent print:p-0 print:border-t print:border-b print:border-gray-300 print:py-1">
+              <div className="space-y-1 text-xs">
                 <div className="flex justify-between text-gray-700">
                   <span>Subtotal:</span>
                   <span>{formatarMoeda(sale.subtotal)}</span>
                 </div>
-                <div className="flex justify-between font-bold pt-2 border-t text-gray-700">
-                  <span>Total:</span>
+                <div className="flex justify-between font-bold pt-1 border-t text-gray-700 print:border-t-0">
+                  <span>TOTAL:</span>
                   <span>{formatarMoeda(sale.total)}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Observações */}
+          {/* Observações - apenas texto simples */}
           {sale.notes && (
-            <div className="mb-6 bg-gray-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-700 whitespace-pre-line">{sale.notes}</p>
+            <div className="mb-4 bg-gray-50 p-2 print:bg-transparent print:p-0 print:py-1">
+              <p className="text-xs text-gray-700 whitespace-pre-line">
+                <strong className="print:font-normal">Obs:</strong> {sale.notes}
+              </p>
             </div>
           )}
 
-          {sale.sale_type === 'delivery' && deliveryInfo &&(
-                <div>
-                  <h3 className="font-medium text-gray-700">Informações Adicionais</h3>
-                  <p className="text-sm text-gray-700 whitespace-pre-line">{deliveryInfo.additional_info}</p>
-                </div>
-          )}
+          <p className="text-sm text-gray-700">
+            <strong>De:</strong> {deliveryInfo?.from}
+          </p>
+          <p className="text-sm text-gray-700">
+            <strong>Para:</strong> {deliveryInfo?.to}
+          </p>
 
-          {sale.sale_type === 'delivery' && deliveryInfo && ( 
-            <div className="relative flex items-center py-4">
-              <div className="flex-grow border-t border-dashed border-gray-400"></div>
-              <svg className="flex-shrink-0 mx-2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758L5 19m7-7l-7-7m7 7l2.879-2.879"/>
-              </svg>
-              <div className="flex-grow border-t border-dashed border-gray-400"></div>
+          {deliveryInfo?.additional_info && (
+            <div className="mt-3">
+              <p className="text-sm text-gray-700">
+                <strong>Informações Adicionais:</strong> {deliveryInfo.additional_info}
+              </p>
             </div>
           )}
 
-          {/* Informações de entrega (se aplicável) */}
+          <br></br>
+          {/* Informações de entrega - versão para tela */}
           {sale.sale_type === 'delivery' && deliveryInfo && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <div className="text-center mb-6">
-              <h1 className="text-medium font-bold text-gray-800">Pedido - {getShortId(sale.id)}</h1>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-wrap items-center gap-x-2">
-                <span className="text-medium text-gray-700">Data: {formatarData(deliveryInfo.delivery_date)}</span>
-                <span className="text-medium text-gray-700">Hora: {deliveryInfo.delivery_time}</span>
-              </div>
-              <span className="text-medium text-gray-700">Para: {deliveryInfo.to}</span>
-              {deliveryInfo && (
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg print:hidden">
+              <h3 className="font-bold text-gray-800 mb-2">Informações de Entrega</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="font-medium text-gray-700">Endereço</h3>
-                  <p className="font-medium text-gray-700 whitespace-pre-line">
-                    {deliveryInfo.street}, {deliveryInfo.number}
+                  <p className="text-sm text-gray-700">
+                    <strong>De:</strong> {deliveryInfo.from}
                   </p>
-                  <p className="font-medium text-gray-700 whitespace-pre-line">
-                    {deliveryInfo.neighborhood} - {deliveryInfo.city}/{deliveryInfo.uf}
+                  <p className="text-sm text-gray-700">
+                    <strong>Para:</strong> {deliveryInfo.to}
                   </p>
-                  <p className="font-medium text-gray-700 whitespace-pre-line">
-                    {deliveryInfo.complement}
+                  <p className="text-sm text-gray-700">
+                    <strong>Data:</strong> {formatarData(deliveryInfo.delivery_date)} 
+                    <span className="mx-2"></span> 
+                    <strong>Hora:</strong> {formatarHora(deliveryInfo.delivery_time)} 
                   </p>
+                  <p className="text-sm text-gray-700">
+                    <strong>Endereço:</strong> {deliveryInfo.street}, {deliveryInfo.number}
+                  </p>
+                  {deliveryInfo.complement && (
+                    <p className="text-sm text-gray-700">
+                      <strong>Complemento:</strong> {deliveryInfo.complement}
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-700">
+                    <strong>Bairro:</strong> {deliveryInfo.neighborhood}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <strong>Cidade/UF:</strong> {deliveryInfo.city}/{deliveryInfo.uf}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <strong>CEP:</strong> {deliveryInfo.cep}
+                  </p>
+                </div>
               </div>
-              )}
             </div>
-          </div>
-        )}
+          )}
 
-          {/* Botões de ação */}
-          <button
+          {/* Informações de entrega - versão para impressão */}
+          {sale.sale_type === 'delivery' && deliveryInfo && (
+            <div className="hidden print:block border-t border-gray-300 pt-2 mt-2">
+              <h3 className="font-bold text-gray-800 mb-2">Informações de Entrega</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    <strong>Para:</strong> {deliveryInfo.to} 
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <strong>Data:</strong> {formatarData(deliveryInfo.delivery_date)} 
+                    <span className="mx-2"></span> 
+                    <strong>Hora:</strong> {formatarHora(deliveryInfo.delivery_time)} 
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <strong>Endereço:</strong> {deliveryInfo.street}, {deliveryInfo.number}
+                  </p>
+                  {deliveryInfo.complement && (
+                    <p className="text-sm text-gray-700">
+                      <strong>Complemento:</strong> {deliveryInfo.complement}
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-700">
+                    <strong>Bairro:</strong> {deliveryInfo.neighborhood}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <strong>Cidade/UF:</strong> {deliveryInfo.city}/{deliveryInfo.uf}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <strong>CEP:</strong> {deliveryInfo.cep}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Botões de ação - apenas em tela */}
+          <div className="fixed bottom-4 left-4 right-4 flex justify-between print:hidden">
+            <button
               onClick={() => router.push(backRoute)}
-              className="fixed bottom-6 left-6 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700"
-          >
+              className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700"
+            >
               <LeftArrowIcon />
-          </button>
-          
-          <button
-            onClick={handlePrint}
-            className="fixed bottom-6 right-6 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700"
-          >
-            <PrintIcon />
-          </button>
+            </button>
+            
+            <button
+              onClick={handlePrint}
+              className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700"
+            >
+              <PrintIcon />
+            </button>
+          </div>
         </div>
       </div>
       <ToastContainer />
     </div>
   );
 }
+
