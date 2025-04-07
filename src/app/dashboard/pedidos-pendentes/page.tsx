@@ -28,7 +28,7 @@ interface OrderItem {
 interface Order {
   id: string;
   created_at: string;
-  customer_name: string;
+  customer_name?: string;
   total: number;
   status: string;
   sale_type: 'pickup' | 'delivery';
@@ -42,80 +42,94 @@ export default function PendingOrdersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Atualize a função fetchPendingOrders
     const fetchPendingOrders = async () => {
-        setLoading(true);
-        try {
-          // Primeiro, busque apenas os pedidos pendentes
-          const { data: ordersData, error: ordersError } = await supabase
-            .from('sales')
-            .select('*')
-            .eq('status', 'PENDING')
-            .order('created_at', { ascending: true });
-      
-          if (ordersError) {
-            console.error('Orders error:', ordersError);
-            throw ordersError;
-          }
-      
-          if (!ordersData || ordersData.length === 0) {
-            setOrders([]);
-            return;
-          }
-      
-          // Depois, para cada pedido, busque os itens e produtos separadamente
-          const ordersWithItems = await Promise.all(
-            ordersData.map(async (order) => {
-              // Busca os itens da venda
-              const { data: itemsData, error: itemsError } = await supabase
-                .from('sale_items')
-                .select('*')
-                .eq('sale_id', order.id);
-      
-              if (itemsError) {
-                console.error(`Items error for order ${order.id}:`, itemsError);
-                return { ...order, items: [] };
+      setLoading(true);
+      try {
+        // Busca os pedidos pendentes
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('sales')
+          .select('*')
+          .eq('status', 'PENDING')
+          .order('created_at', { ascending: true });
+    
+        if (ordersError) {
+          console.error('Orders error:', ordersError);
+          throw ordersError;
+        }
+    
+        if (!ordersData || ordersData.length === 0) {
+          setOrders([]);
+          return;
+        }
+    
+        // Para cada pedido, busca informações adicionais
+        const ordersWithItems = await Promise.all(
+          ordersData.map(async (order) => {
+            // Busca os itens da venda
+            const { data: itemsData, error: itemsError } = await supabase
+              .from('sale_items')
+              .select('*')
+              .eq('sale_id', order.id);
+    
+            if (itemsError) {
+              console.error(`Items error for order ${order.id}:`, itemsError);
+              return { ...order, items: [] };
+            }
+    
+            // Busca informações de entrega se for delivery
+            let customerName = '';
+            if (order.sale_type === 'delivery') {
+              const { data: deliveryData, error: deliveryError } = await supabase
+                .from('delivery_infos')
+                .select('customer_name')
+                .eq('sale_id', order.id)
+                .single();
+    
+              if (!deliveryError && deliveryData) {
+                customerName = deliveryData.customer_name;
               }
-      
-              // Para cada item, busca o produto relacionado
-              const itemsWithProducts = await Promise.all(
-                (itemsData || []).map(async (item) => {
-                  const { data: productData, error: productError } = await supabase
-                    .from('products')
-                    .select('id, name')
-                    .eq('id', item.product_id)
-                    .single();
-      
-                  if (productError) {
-                    console.error(`Product error for item ${item.id}:`, productError);
-                    return {
-                      ...item,
-                      product: { id: item.product_id, name: 'Produto não encontrado' }
-                    };
-                  }
-      
+            }
+    
+            // Para cada item, busca o produto relacionado
+            const itemsWithProducts = await Promise.all(
+              (itemsData || []).map(async (item) => {
+                const { data: productData, error: productError } = await supabase
+                  .from('products')
+                  .select('id, name')
+                  .eq('id', item.product_id)
+                  .single();
+    
+                if (productError) {
+                  console.error(`Product error for item ${item.id}:`, productError);
                   return {
                     ...item,
-                    product: productData
+                    product: { id: item.product_id, name: 'Produto não encontrado' }
                   };
-                })
-              );
-      
-              return {
-                ...order,
-                items: itemsWithProducts
-              };
-            })
-          );
-      
-          setOrders(ordersWithItems);
-        } catch (error) {
-          console.error('Full error:', error);
-          toast.error('Erro ao carregar pedidos. Verifique o console para detalhes.');
-        } finally {
-          setLoading(false);
-        }
-      };
+                }
+    
+                return {
+                  ...item,
+                  product: productData
+                };
+              })
+            );
+    
+            return {
+              ...order,
+              items: itemsWithProducts,
+              customer_name: customerName
+            };
+          })
+        );
+    
+        setOrders(ordersWithItems);
+      } catch (error) {
+        console.error('Full error:', error);
+        toast.error('Erro ao carregar pedidos. Verifique o console para detalhes.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
     fetchPendingOrders();
 
@@ -178,8 +192,11 @@ export default function PendingOrdersPage() {
                     <p className="text-sm text-gray-500">
                       {new Date(order.created_at).toLocaleString()}
                     </p>
-                    <p className="mt-1">Cliente: {order.customer_name || 'Não informado'}</p>
-                    <p className="font-bold mt-2">Total: R$ {order.total?.toFixed(2)}</p>
+                    <p className="mt-1">
+                      {order.sale_type === 'delivery' 
+                        ? `Cliente: ${order.customer_name || 'Não informado'}` 
+                        : 'Retirada no local'}
+                    </p>                    <p className="font-bold mt-2">Total: R$ {order.total?.toFixed(2)}</p>
                   </div>
                   <button
                   onClick={() => navigateToPreparation(order.id)}

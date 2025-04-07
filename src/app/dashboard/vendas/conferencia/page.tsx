@@ -32,6 +32,8 @@ interface PaymentDetails {
   cashAmount: number;
   showDiscount: boolean;
   showAddition: boolean;
+  discount_amount: number; // Valor calculado do desconto
+  addition_amount: number; // Valor calculado do acréscimo
 }
 
 interface PaymentAdjustment {
@@ -71,11 +73,12 @@ export default function CheckoutPage() {
     addition: { type: 'fixed', value: 0 },
     cashAmount: 0,
     showDiscount: false,
-    showAddition: false
+    showAddition: false,
+    discount_amount: 0, 
+    addition_amount: 0  
   });
   const [observations, setObservations] = useState('');
-
-
+  const [deliveryFee, setDeliveryFee] = useState(15); // Valor padrão de R$ 15,00
 
   useEffect(() => {
     const cartParam = searchParams.get('cart');
@@ -89,7 +92,19 @@ export default function CheckoutPage() {
     }
   }, [searchParams]);
 
-  const calcularValorTotal = () => {
+  useEffect(() => {
+    calcularValorTotal(true);
+  }, [
+    cartItems, 
+    paymentDetails.discount.type, 
+    paymentDetails.discount.value,
+    paymentDetails.addition.type,
+    paymentDetails.addition.value,
+    saleType,
+    deliveryFee
+  ]);
+
+  const calcularValorTotal = (updateState = false) => {
     const subtotal = cartItems.reduce((total, item) => {
       return total + (item.product.sale_price * item.quantity);
     }, 0);
@@ -98,18 +113,30 @@ export default function CheckoutPage() {
     const discountValue = paymentDetails.discount.type === 'percentage' 
       ? subtotal * (paymentDetails.discount.value / 100)
       : paymentDetails.discount.value;
+      console.log(discountValue);
   
     // Calcular acréscimo
     const additionValue = paymentDetails.addition.type === 'percentage' 
       ? subtotal * (paymentDetails.addition.value / 100)
       : paymentDetails.addition.value;
   
-    return subtotal + additionValue - discountValue;
+    // Adicionar taxa de entrega se for delivery
+    const deliveryFeeValue = saleType === 'delivery' ? deliveryFee : 0;
+  
+    if (updateState) {
+      setPaymentDetails(prev => ({
+        ...prev,
+        discount_amount: discountValue,
+        addition_amount: additionValue
+      }));
+    }
+  
+    return subtotal + additionValue - discountValue + deliveryFeeValue;
   };
 
   const calcularTroco = () => {
     if (paymentMethod !== 'cash' || paymentDetails.cashAmount <= 0) return 0;
-    return paymentDetails.cashAmount - calcularValorTotal();
+    return paymentDetails.cashAmount - calcularValorTotal(); // Sem atualizar estado
   };
 
   const handleAdjustmentChange = (field: 'discount' | 'addition', key: keyof PaymentAdjustment, value: string | number) => {
@@ -220,42 +247,35 @@ export default function CheckoutPage() {
   };
 
   const getObservationsDetails = () => {
-    let notes ='';
-
-    if(observations.length>0){
-      notes = "\n\n";
-
-    }
+    let notes = observations.length > 0 ? "\n\n" : '';
+    
     notes += `Meio de pagamento: ${translatePaymentMethod(paymentMethod)}\n`;
     notes += `Subtotal: ${getSubTotal()}\n`;
-    if(paymentDetails.discount.value !== 0){
-      if(paymentDetails.discount.type === 'percentage'){
-        notes += `Desconto: ${formatarPorcentagem(paymentDetails.discount.value)} \n`
-      } else {
-        notes += `Desconto: ${formatarMoeda(paymentDetails.discount.value)} \n`;
-      }        
+    
+    if(paymentDetails.discount.value !== 0) {
+      notes += `Desconto (${paymentDetails.discount.type === 'percentage' ? 
+               formatarPorcentagem(paymentDetails.discount.value) + ')' : 
+               'valor fixo)'}: ${formatarMoeda(paymentDetails.discount_amount)}\n`;
     }
-
-    if(paymentDetails.addition.value !== 0){
-      if(paymentDetails.addition.type === 'percentage'){
-        notes += `Acréscimo:  ${formatarPorcentagem(paymentDetails.addition.value)} \n`;
-      } else {
-        notes += `Acréscimo:  ${formatarMoeda(paymentDetails.addition.value)} \n`;
-      }
-
+  
+    if(paymentDetails.addition.value !== 0) {
+      notes += `Acréscimo (${paymentDetails.addition.type === 'percentage' ? 
+               formatarPorcentagem(paymentDetails.addition.value) + ')' : 
+               'valor fixo)'}: ${formatarMoeda(paymentDetails.addition_amount)}\n`;
     }
-
+  
     notes += `Total: ${formatarMoeda(calcularValorTotal())}\n`;
-
-    if(paymentMethod === 'cash'){
-      notes += `Valor Pago:  ${formatarMoeda(paymentDetails.cashAmount)} \n`;
-      notes += `Troco:  ${formatarMoeda(calcularTroco())} \n`;
+  
+    if(paymentMethod === 'cash') {
+      notes += `Valor Pago: ${formatarMoeda(paymentDetails.cashAmount)}\n`;
+      notes += `Troco: ${formatarMoeda(calcularTroco())}\n`;
     }
-
+  
     return notes;
   };
 
   const handleSubmit = async () => {
+    console.log("tamo aqui")
     setIsSubmitting(true);
     
     try {
@@ -268,7 +288,14 @@ export default function CheckoutPage() {
           total: calcularValorTotal(),
           status: 'PENDING',
           notes: observations + getObservationsDetails(), 
-        }])
+          delivery_fee: saleType === 'delivery' ? deliveryFee : 0,
+          discount_amount: paymentDetails.discount_amount, 
+          discount_type: paymentDetails.discount.type,    
+          discount_value: paymentDetails.discount.value,  
+          addition_amount: paymentDetails.addition_amount,
+          addition_type: paymentDetails.addition.type,     
+          addition_value: paymentDetails.addition.value 
+      }])
         .select()
         .single();
   
@@ -583,6 +610,15 @@ export default function CheckoutPage() {
                 />
               </div>
             </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Taxa de Entrega</label>
+              <CurrencyInput
+                value={deliveryFee}
+                onChange={(value) => setDeliveryFee(Math.max(0, value))} // Garante que não seja negativo
+                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+              />
+            </div>
             
             <div>
               <label className="block text-sm text-gray-400 mb-1">Complemento (Opcional)</label>
@@ -753,10 +789,17 @@ export default function CheckoutPage() {
 
             {/* Resumo do Valor */}
             <div className="bg-gray-800 p-4 rounded-lg">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-gray-400">Subtotal:</span>
+              <span>{formatarMoeda(cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0))}</span>
+            </div>
+
+            {saleType === 'delivery' && (
               <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-400">Subtotal:</span>
-                <span>{formatarMoeda(cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0))}</span>
+                <span className="text-gray-400">Taxa de Entrega:</span>
+                <span>+{formatarMoeda(deliveryFee)}</span>
               </div>
+            )}
 
             {paymentDetails.discount.value > 0 && (
             <div className="flex justify-between items-center mb-2 text-red-400">

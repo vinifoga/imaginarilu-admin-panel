@@ -25,6 +25,10 @@ interface Sale {
   total: number;
   status: string;
   notes: string;
+  delivery_fee: number;
+  addition_amount: number;
+  discount_amount: number;
+
 }
 
 interface SaleItem {
@@ -127,23 +131,23 @@ const { id } = useParams();
 
         // Buscar itens da venda
         const { data: itemsData, error: itemsError } = await supabase
-  .from('sale_items')
-  .select(`
-    id,
-    quantity,
-    unit_price,
-    total_price,
-    product_id,
-    products (
-      name,
-      is_composition
-    )
-  `)
-  .eq('sale_id', id) as { data: unknown[] | null, error: PostgrestError | null };
+        .from('sale_items')
+        .select(`
+          id,
+          quantity,
+          unit_price,
+          total_price,
+          product_id,
+          products (
+            name,
+            is_composition
+          )
+        `)
+        .eq('sale_id', id) as { data: unknown[] | null, error: PostgrestError | null };
 
-if (itemsError) throw itemsError;
+      if (itemsError) throw itemsError;
 
-if (itemsData !== null) {
+      if (itemsData !== null) {
   const formattedItems = await Promise.all(
     (itemsData as SaleItemWithProduct[]).map(async (item) => {
       // Buscar imagem do item principal
@@ -448,6 +452,18 @@ if (itemsData !== null) {
                   <span>Subtotal:</span>
                   <span>{formatarMoeda(sale.subtotal)}</span>
                 </div>
+                <div className="flex justify-between items-center mb-2 text-gray-700">
+                  <span className="text-gray-700">Taxa de Entrega:</span>
+                  <span>+{formatarMoeda(sale.delivery_fee)}</span>
+                </div>
+                <div className="flex justify-between items-center mb-2 text-gray-700">
+                  <span className="text-gray-700">Acréscimo:</span>
+                  <span>+{formatarMoeda(sale.addition_amount)}</span>
+                </div>
+                <div className="flex justify-between items-center mb-2 text-gray-700">
+                  <span className="text-gray-700">Desconto:</span>
+                  <span>-{formatarMoeda(sale.discount_amount)}</span>
+                </div>
                 <div className="flex justify-between font-bold pt-1 border-t text-gray-700 print:border-t-0">
                   <span>TOTAL:</span>
                   <span>{formatarMoeda(sale.total)}</span>
@@ -514,7 +530,7 @@ if (itemsData !== null) {
                     <strong>Bairro:</strong> {deliveryInfo.neighborhood}
                   </p>
                   <p className="text-sm text-gray-700">
-                    <strong>Cidade/UF:</strong> {deliveryInfo.city}/{deliveryInfo.uf}
+                    <strong>Cidade:</strong> {deliveryInfo.city}
                   </p>
                   <p className="text-sm text-gray-700">
                     <strong>CEP:</strong> {deliveryInfo.cep}
@@ -554,7 +570,7 @@ if (itemsData !== null) {
                     <strong>Bairro:</strong> {deliveryInfo.neighborhood}
                   </p>
                   <p className="text-sm text-gray-700">
-                    <strong>Cidade/UF:</strong> {deliveryInfo.city}/{deliveryInfo.uf}
+                    <strong>Cidade:</strong> {deliveryInfo.city}
                   </p>
                   <p className="text-sm text-gray-700">
                     <strong>CEP:</strong> {deliveryInfo.cep}
