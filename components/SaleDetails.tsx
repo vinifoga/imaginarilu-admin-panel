@@ -467,18 +467,24 @@ const { id } = useParams();
                   <span>Subtotal:</span>
                   <span>{formatarMoeda(sale.subtotal)}</span>
                 </div>
-                <div className="flex justify-between items-center mb-2 text-gray-700">
-                  <span className="text-gray-700">Taxa de Entrega:</span>
-                  <span>+{formatarMoeda(sale.delivery_fee)}</span>
-                </div>
-                <div className="flex justify-between items-center mb-2 text-gray-700">
-                  <span className="text-gray-700">Acréscimo:</span>
-                  <span>+{formatarMoeda(sale.addition_amount)}</span>
-                </div>
+                {!!sale.delivery_fee && (
+                  <div className="flex justify-between items-center mb-2 text-gray-700">
+                    <span className="text-gray-700">Taxa de Entrega:</span>
+                    <span>+{formatarMoeda(sale.delivery_fee)}</span>
+                  </div>
+                )}
+                {!!sale.addition_amount && (
+                  <div className="flex justify-between items-center mb-2 text-gray-700">
+                    <span className="text-gray-700">Acréscimo:</span>
+                    <span>+{formatarMoeda(sale.addition_amount)}</span>
+                  </div>
+                  )}
+                {!!sale.discount_amount && (
                 <div className="flex justify-between items-center mb-2 text-gray-700">
                   <span className="text-gray-700">Desconto:</span>
                   <span>-{formatarMoeda(sale.discount_amount)}</span>
                 </div>
+                )}
                 <div className="flex justify-between font-bold pt-1 border-t text-gray-700 print:border-t-0">
                   <span>TOTAL:</span>
                   <span>{formatarMoeda(sale.total)}</span>
@@ -495,13 +501,19 @@ const { id } = useParams();
               </p>
             </div>
           )}
-
-          <p className="text-sm text-gray-700">
-            <strong>De:</strong> {deliveryInfo?.from}
-          </p>
-          <p className="text-sm text-gray-700">
-            <strong>Para:</strong> {deliveryInfo?.to}
-          </p>
+          
+            {deliveryInfo?.from && (
+            <p className="text-sm text-gray-700">
+              <strong>De:</strong> {deliveryInfo.from}
+            </p>
+            )}
+            
+            {deliveryInfo?.to && (
+              <p className="text-sm text-gray-700">
+                <strong>Para:</strong> {deliveryInfo?.to}
+              </p>
+            )}
+          
 
           {deliveryInfo?.additional_info && (
             <div className="mt-3">
