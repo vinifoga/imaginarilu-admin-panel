@@ -49,10 +49,9 @@ interface Order {
     delivery_time?: string;
   }
 
-export default function OrderPreparationPage({  }: { params: { id: string } }) {
-    // Desempacota os parâmetros corretamente
-    const routeParams = useParams();
-    const id = routeParams.id as string; // Corrigido para usar o id diretamente
+  export default function OrderPreparationPage({ }: { params: { id: string } }) {
+    const params = useParams();
+    const id = params.id as string;
     const router = useRouter();
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
