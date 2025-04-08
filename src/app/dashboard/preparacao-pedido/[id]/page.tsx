@@ -49,7 +49,7 @@ interface Order {
     delivery_time?: string;
   }
 
-  export default function OrderPreparationPage({ }: { params: { id: string } }) {
+  export default function OrderPreparationPage() {
     const params = useParams();
     const id = params.id as string;
     const router = useRouter();
