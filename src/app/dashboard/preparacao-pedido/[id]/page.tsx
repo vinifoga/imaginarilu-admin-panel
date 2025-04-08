@@ -14,6 +14,7 @@ import { OrderBadge } from '../../../../../components/OrderBadge';
 import LeftArrowIcon from '../../../../../components/LeftArrowIcon';
 import CheckIcon from '../../../../../components/CheckIcon';
 import { ToastContainer } from 'react-toastify';
+import ConfirmationModal from '../../../../../components/ConfirmationModal';
 
 interface Product {
   id: string;
@@ -56,7 +57,9 @@ interface Order {
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
-  
+    const [showCompletionModal, setShowCompletionModal] = useState(false);
+    const [showPrintConfirmation, setShowPrintConfirmation] = useState(false);
+    const [showIncompleteItemsModal, setShowIncompleteItemsModal] = useState(false);  
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -298,20 +301,20 @@ interface Order {
         );
       
         if (!allItemsPicked) {
-          toast.warning('Complete a separação de todos os itens antes de finalizar', {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-          });
+          setShowIncompleteItemsModal(true);
           return;
         }
       
+        setShowCompletionModal(true);
+      };
+      
+      const confirmCompletePreparation = async () => {
+        setShowCompletionModal(false);
         setUpdating(true);
+        
         try {
+          if (!order) return;
+          
           const newStatus = order.sale_type === 'delivery' 
             ? OrderStatus.PACKED 
             : OrderStatus.AWAITING_PICKUP;
@@ -325,37 +328,23 @@ interface Order {
       
           if (error) throw error;
       
-          toast.success('Preparação do pedido concluída com sucesso!', {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-          });
-      
-          // Mostra confirmação para imprimir
-          const shouldPrint = window.confirm('Preparação concluída! Deseja imprimir o comprovante?');
-          if (shouldPrint) {
-            router.push(`/dashboard/vendas/detalhes/${order.id}?fromPreparation=true`);
-          } else {
-            router.push('/dashboard/pedidos-pendentes');
-          }
-      
+          toast.success('Preparação do pedido concluída com sucesso!');
+          setShowPrintConfirmation(true);
+          
         } catch (error) {
           console.error('Error completing preparation:', error);
-          toast.error('Erro ao concluir preparação', {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-          });
+          toast.error('Erro ao concluir preparação');
         } finally {
           setUpdating(false);
+        }
+      };
+      
+      const handlePrintConfirmation = (shouldPrint: boolean) => {
+        setShowPrintConfirmation(false);
+        if (shouldPrint && order) {
+          router.push(`/dashboard/vendas/detalhes/${order.id}?fromPreparation=true`);
+        } else {
+          router.push('/dashboard/pedidos-pendentes');
         }
       };
 
@@ -415,6 +404,17 @@ interface Order {
           <h1 className="text-2xl font-bold">Preparação do Pedido</h1>
           <div className="w-8"></div>
         </div>
+        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push('/dashboard/pedidos-pendentes')}
+            className="text-gray-400 hover:text-white"
+          >
+            <LeftArrowIcon />
+          </button>
+          <h1 className="text-2xl font-bold">Preparação do Pedido</h1>
+        </div>
+      </div>
 
         <div className="bg-gray-800 rounded-lg p-4 mb-6">
           <div className="flex justify-between items-start">
@@ -457,51 +457,55 @@ interface Order {
           
           <div className="space-y-4">
             {order.items.map((item) => (
-              <div key={item.id} className="bg-gray-800 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={item.picked_quantity === item.quantity}
-                      onChange={(e) => {
-                        const newQuantity = e.target.checked ? item.quantity : 0;
-                        handlePickedQuantityChange(item.id, null, newQuantity);
-                      }}
-                      className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <div>
-                      <h3 className="font-medium">
-                      {item.quantity}x {item.product.name}
-                      </h3>
-                    </div>
-                  </div>
+              <div key={item.id} className={`bg-gray-800 rounded-lg p-4 ${item.picked_quantity === item.quantity ? 'border-l-4 border-green-500' : ''}`}>
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={item.picked_quantity === item.quantity}
+                    onChange={(e) => {
+                      const newQuantity = e.target.checked ? item.quantity : 0;
+                      handlePickedQuantityChange(item.id, null, newQuantity);
+                    }}
+                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    id={`item-${item.id}`}
+                  />
+                  <label 
+                    htmlFor={`item-${item.id}`} 
+                    className="font-medium cursor-pointer select-none"
+                  >
+                    {item.quantity}x {item.product.name}
+                  </label>
                 </div>
-
-                {item.components && item.components.length > 0 && (
-                  <div className="ml-8 mt-3 pl-4 border-l-2 border-gray-600 space-y-3">
-                    {item.components.map((component) => (
-                      <div key={component.id} className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={component.picked_quantity === component.quantity}
-                            onChange={(e) => {
-                              const newQuantity = e.target.checked ? component.quantity : 0;
-                              handlePickedQuantityChange(item.id, component.id, newQuantity);
-                            }}
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <div>
-                            <h4 className="text-sm">
-                            {component.quantity}x {component.product.name}
-                            </h4>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
+            
+              {item.components && item.components.length > 0 && (
+                <div className="ml-8 mt-3 pl-4 border-l-2 border-gray-600 space-y-3">
+                  {item.components.map((component) => (
+                    <div key={component.id} className={`flex justify-between items-center ${component.picked_quantity === component.quantity ? 'text-green-400' : ''}`}>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={component.picked_quantity === component.quantity}
+                          onChange={(e) => {
+                            const newQuantity = e.target.checked ? component.quantity : 0;
+                            handlePickedQuantityChange(item.id, component.id, newQuantity);
+                          }}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          id={`component-${component.id}`}
+                        />
+                        <label 
+                          htmlFor={`component-${component.id}`} 
+                          className="text-sm cursor-pointer select-none"
+                        >
+                          {component.quantity}x {component.product.name}
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             ))}
           </div>
         </div>
@@ -534,6 +538,36 @@ interface Order {
         <CheckIcon  />
       </button>
       <ToastContainer />
+      <ConfirmationModal
+      isOpen={showCompletionModal}
+      onClose={() => setShowCompletionModal(false)}
+      onConfirm={confirmCompletePreparation}
+      title="Confirmar Conclusão"
+      message="Tem certeza que deseja marcar este pedido como preparado?"
+      confirmText="Confirmar"
+      cancelText="Cancelar"
+    />
+
+    {/* Modal de Confirmação de Impressão */}
+    <ConfirmationModal
+      isOpen={showPrintConfirmation}
+      onClose={() => handlePrintConfirmation(false)}
+      onConfirm={() => handlePrintConfirmation(true)}
+      title="Preparação Concluída"
+      message="Deseja imprimir o comprovante do pedido?"
+      confirmText="Imprimir"
+      cancelText="Não Imprimir"
+    />
+
+    {/* Modal de Itens Incompletos */}
+    <ConfirmationModal
+      isOpen={showIncompleteItemsModal}
+      onClose={() => setShowIncompleteItemsModal(false)}
+      onConfirm={() => setShowIncompleteItemsModal(false)}
+      title="Separação Incompleta"
+      message="Complete a separação de todos os itens antes de finalizar a preparação."
+      confirmText="Entendi"
+    />
     </div>
   );
 }

@@ -1,14 +1,14 @@
 // components/ConfirmationModal.tsx
 'use client';
 
-import { useEffect } from 'react';
+import { ReactNode, useEffect } from 'react';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: ReactNode;
   confirmText?: string;
   cancelText?: string;
 }

@@ -9,6 +9,9 @@ import Select from 'react-select';
 import PlaceholderImage from '../../../../../components/PlaceholderImage';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
 import SaveIcon from '../../../../../components/SaveIcon';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 
 interface Categoria {
   id: string;
@@ -82,6 +85,7 @@ export default function NovoProdutoPage() {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number[]>([]);
   const [active, setActive] = useState<boolean>(true);
+
 
   
   
@@ -365,7 +369,7 @@ useEffect(() => {
   
       } catch (error) {
         console.error("Erro no upload:", error);
-        alert("Erro ao enviar imagem. Tente novamente.");
+        toast.error("Erro ao enviar imagem. Tente novamente.");
       } finally {
         setIsUploading(false);
         // Reseta o progresso
@@ -389,7 +393,7 @@ useEffect(() => {
   setLoading(true);
 
   if (!nome || !codigoBarras || !sku) {
-    alert('Preencha todos os campos obrigatórios.');
+    toast.error('Por favor, preencha todos os campos obrigatórios');
     setLoading(false);
     return;
   }
@@ -409,10 +413,10 @@ useEffect(() => {
 
     if (barcodeExistente || skuExistente) {
       if (barcodeExistente) {
-        alert('Código de barras já existe.');
+        toast.error('Código de barras já existe.');
       }
       if (skuExistente) {
-        alert('SKU já existe.');
+        toast.error('SKU já existe.');
       }
       return true;
     }
@@ -457,8 +461,7 @@ useEffect(() => {
       .select();
 
     if (produtoError) {
-      console.error(produtoError);
-      alert('Erro ao salvar produto. Tente novamente.');
+      toast.error('Erro ao salvar produto. Tente novamente.'+ produtoError);
       setLoading(false);
       return;
     }
@@ -474,6 +477,7 @@ useEffect(() => {
 
         if (imagemError) {
           console.error('Erro ao salvar imagem:', imagemError);
+          toast.error('Erro ao salvar imagem:');
         }
       }
     }
@@ -497,8 +501,7 @@ useEffect(() => {
       .insert(produtosDaComposicao);
 
     if (composicaoError) {
-      console.error('Erro ao salvar produtos da composicao:', composicaoError);
-      alert('Erro ao salvar produtos da composicao. Tente novamente.');
+      toast.error('Erro ao salvar produtos da composicao. Tente novamente.');
     } 
   }
 
@@ -507,16 +510,15 @@ useEffect(() => {
       .insert(categoriasParaSalvar);
 
     if (categoriasError) {
-      console.error('Erro ao salvar categorias do produto:', categoriasError);
-      alert('Erro ao salvar categorias do produto. Tente novamente.');
+      toast.error('Erro ao salvar categorias do produto. Tente novamente.');
     } else {
-      console.log('Produto, imagens e categorias salvas com sucesso!');
+      toast.success('Produto, imagens e categorias salvas com sucesso!');
       router.push('/dashboard/produtos');
     }
 
   } catch (error) {
     console.error('Erro inesperado ao salvar produto:', error);
-    alert('Erro inesperado ao salvar produto. Tente novamente.');
+    toast.error('Erro inesperado ao salvar produto. Tente novamente.');
   } finally {
     setLoading(false);
   }
@@ -527,7 +529,7 @@ const adicionarProduto = (produto: Product, quantidade: number) => {
   const produtoExistente = componentes.find((c) => c.product.id === produto.id);
 
   if (produtoExistente) {
-    alert('Este produto já foi adicionado à composição.');
+    toast.info('Este produto já foi adicionado à composição.');
     return;
   }
 
@@ -797,9 +799,10 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
 
         {/* Campo Categoria (Multiselect) */}
         <div>
-          <label className="block text-sm font-medium text-gray-300">Categorias</label>
+          <label className="block text-sm font-medium text-gray-300 required-field">Categorias</label>
           <Select
             isMulti
+            placeholder="Selecione as categorias..."
             options={categorias.map((categoria) => ({
               value: categoria.id,
               label: categoria.name,
@@ -810,8 +813,8 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
             }))}
             onChange={(selectedOptions) => {
               const novasCategorias = selectedOptions.map((option) => ({
-                id: option.value,
-                name: option.label,
+          id: option.value,
+          name: option.label,
               }));
               setCategoriasSelecionadas(novasCategorias);
             }}
@@ -819,37 +822,41 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
             classNamePrefix="select"
             styles={{
               control: (provided) => ({
-                ...provided,
-                backgroundColor: '#374151',
-                borderColor: '#4B5563',
-                color: '#FFFFFF',
+          ...provided,
+          backgroundColor: '#374151',
+          borderColor: '#4B5563',
+          color: '#FFFFFF',
               }),
               menu: (provided) => ({
-                ...provided,
-                backgroundColor: '#374151',
+          ...provided,
+          backgroundColor: '#374151',
               }),
               option: (provided, state) => ({
-                ...provided,
-                backgroundColor: state.isSelected ? '#4B5563' : '#374151',
-                color: '#FFFFFF',
-                ':hover': {
-                  backgroundColor: '#4B5563',
-                },
+          ...provided,
+          backgroundColor: state.isSelected ? '#4B5563' : '#374151',
+          color: '#FFFFFF',
+          ':hover': {
+            backgroundColor: '#4B5563',
+          },
               }),
               multiValue: (provided) => ({
-                ...provided,
-                backgroundColor: '#4B5563',
+          ...provided,
+          backgroundColor: '#4B5563',
               }),
               multiValueLabel: (provided) => ({
-                ...provided,
-                color: '#FFFFFF',
+          ...provided,
+          color: '#FFFFFF',
               }),
               multiValueRemove: (provided) => ({
-                ...provided,
-                color: '#FFFFFF',
-                ':hover': {
-                  backgroundColor: '#EF4444',
-                },
+          ...provided,
+          color: '#FFFFFF',
+          ':hover': {
+            backgroundColor: '#EF4444',
+          },
+              }),
+              placeholder: (provided) => ({
+          ...provided,
+          color: '#9CA3AF',
               }),
             }}
           />
@@ -857,12 +864,13 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
 
         {/* Campo Nome */}
         <div>
-          <label className="block text-sm font-medium text-gray-300">Nome</label>
+          <label className="block text-sm font-medium text-gray-300 required-field">Nome</label>
           <input
             type="text"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+            required
           />
         </div>
 
@@ -878,7 +886,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
 
         {/* Campo Código de Barras */}
         <div>
-          <label className="block text-sm font-medium text-gray-300">Código de Barras</label>
+          <label className="block text-sm font-medium text-gray-300 required-field">Código de Barras</label>
           <div className="relative">
             <input
               type="text"
@@ -886,6 +894,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
               onChange={(e) => setCodigoBarras(e.target.value)}
               onBlur={handleInputBlur}
               className="mt-1 block w-full p-2 pl-4 pr-10 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              required
             />
             <button
               onClick={abrirCameraParaScanner}
@@ -910,12 +919,13 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
 
         {/* Campo SKU */}
         <div>
-          <label className="block text-sm font-medium text-gray-300">SKU</label>
+          <label className="block text-sm font-medium text-gray-300 required-field">SKU</label>
           <input
             type="text"
             value={sku}
             onChange={(e) => setSku(e.target.value)} // Permite edição manual
             className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+            required
           />
         </div>
 
@@ -923,7 +933,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
         <>
           {/* Campo de Pesquisa e Adição de Produtos */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-300">Adicionar Produtos à Composição</label>
+            <label className="block text-sm font-medium text-gray-300 required-field">Adicionar Produtos à Composição</label>
             <div className="mt-2 relative">
               <input
                 type="text"
@@ -1053,7 +1063,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
       {/* Campo Valor de Compra (Produto Simples) */}
           {abaAtiva === 'simples' && (
             <div>
-              <label className="block text-sm font-medium text-gray-300">Valor de Compra</label>
+              <label className="block text-sm font-medium text-gray-300 required-field">Valor de Compra</label>
               <input
                 type="text"
                 value={valorCompra}
@@ -1065,6 +1075,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                   calcularValorVenda(e.target.value, porcentagemLucroMercadoLivre, 'mercadoLivre');
                 }}
                 className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                required
               />
             </div>
           )}
@@ -1087,7 +1098,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
 
             {/* Campo Valor de Venda (Produto Simples) */}
               <div>
-                <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+                <label className="block text-sm font-medium text-gray-300 required-field">Valor de Venda</label>
                 <input
                   type="text"
                   value={valorVenda}
@@ -1096,6 +1107,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                     setValorVenda(formatarMoeda(e.target.value));
                   }}
                   className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                  required
                 />
               </div>
           </div>
@@ -1104,12 +1116,13 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
         {/* Campo Valor de Compra (Produto composto) */}
         {abaAtiva === 'composto' && (
           <div>
-            <label className="block text-sm font-medium text-gray-300">Valor de Compra</label>
+            <label className="block text-sm font-medium text-gray-300 required-field">Valor de Compra</label>
             <input
               type="text"
               value={formatarMoeda(valorCompraComposto)}
               readOnly
               className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              required
             />
           </div>
         )}
@@ -1133,7 +1146,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
 
             {/* Campo Valor de Venda (Produto composto) */}
             <div>
-              <label className="block text-sm font-medium text-gray-300">Valor de Venda</label>
+              <label className="block text-sm font-medium text-gray-300 required-field">Valor de Venda</label>
               <input
                 type="text"
                 value={valorVendaComposto}
@@ -1142,6 +1155,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
                   calcularPorcentagemLucroComposto(e.target.value);
                 }}
                 className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+                required
               />
             </div>
           </div>
@@ -1477,6 +1491,7 @@ const calcularValorCompra = (componentes: ComponentProduct[]) => {
               }}
             />
             )}
+            <ToastContainer />
         </div>
       </div>
     </div>
