@@ -133,6 +133,72 @@ export default function NovoProdutoPage() {
     }
   },[sellOnline, sellShopee, sellMercadoLivre, managesStock]);
 
+  // Adicione no início do componente, após as declarações de estado
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const simulationParam = params.get('simulation');
+  
+  if (simulationParam) {
+    try {
+      const simulationData = JSON.parse(decodeURIComponent(simulationParam));
+      
+      if (simulationData.isComposition) {
+        // Ativar a aba de produto composto
+        setAbaAtiva('composto');
+        
+        // Converter os produtos simulados em componentes
+        const componentesConvertidos = simulationData.produtos.map((item: { product: Product; quantity: number }) => ({
+          product: {
+            id: item.product.id,
+            name: item.product.name,
+            description: item.product.description || item.product.name,
+            barcode: item.product.barcode,
+            sku: item.product.sku,
+            cost_price: item.product.cost_price || 0,
+            sale_price: item.product.sale_price,
+            image_url: item.product.image_url,
+            // Adicione outros campos necessários aqui
+            sell_shopee: false,
+            sell_mercado_livre: false,
+            sale_price_shopee: 0,
+            sale_price_mercado_livre: 0,
+            default_profit_margin: 0,
+            profit_margin_virtual_shop: 0,
+            profit_margin_shopee: 0,
+            profit_margin_mercado_livre: 0,
+            manages_stock: false,
+            sell_online: false,
+            quantity: 0,
+            is_composition: false,
+            sale_price_virtual_store: 0,
+            active: true
+          },
+          quantity: item.quantity
+        }));
+        
+        setComponentes(componentesConvertidos);
+        calcularValorCompra(componentesConvertidos);
+        
+        // Definir margem de lucro padrão para produto composto
+        setPorcentagemLucro('100');
+        setPorcentagemLucroLojaVirtual('115');
+        setPorcentagemLucroShopee('117');
+        setPorcentagemLucroMercadoLivre('117');
+      }
+    } catch (error) {
+      console.error('Erro ao processar dados da simulação:', error);
+    }
+  }
+  if (simulationParam) {
+    // Limpar o parâmetro da URL sem recarregar a página
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.delete('simulation');
+    window.history.replaceState({}, document.title, newUrl.toString());
+  }
+}, []);
+
+
+
   const calcularValorVenda = (valorCompra: string, porcentagemLucro: string, field?: string) => {
     const valorCompraNumerico = parseMoeda(valorCompra);
     const porcentagemNumerica = parseFloat(porcentagemLucro.replace(',', '.'));

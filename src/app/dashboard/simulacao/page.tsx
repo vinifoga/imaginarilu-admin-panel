@@ -321,30 +321,61 @@ export default function SimulacaoPage() {
 
       {/* Botão para criar produto composto (opcional) */}
       {produtosSimulados.length > 0 && (
-            <button
-            className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
-            onClick={() => {
-                // Aqui você pode redirecionar para a tela de cadastro de produto composto
-                // com os dados pré-preenchidos ou implementar outra lógica
-                alert('Funcionalidade para criar produto composto será implementada aqui');
-              }}
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                    />
-                </svg>
-            </button>
-        )}
+        <button
+        className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+        onClick={async () => {
+          // Buscar os preços de custo dos produtos selecionados
+          const productIds = produtosSimulados.map(p => p.product.id);
+          const { data: produtosCompletos, error } = await supabase
+            .from('products')
+            .select('id, cost_price')
+            .in('id', productIds);
+          
+          if (error) {
+            console.error('Erro ao buscar preços de custo:', error);
+            return;
+          }
+          
+          // Adicionar cost_price aos produtos simulados
+          const produtosComCostPrice = produtosSimulados.map(item => {
+            const produtoCompleto = produtosCompletos.find(p => p.id === item.product.id) || { cost_price: 0 };
+            return {
+              product: {
+                ...item.product,
+                cost_price: produtoCompleto.cost_price
+              },
+              quantity: item.quantity
+            };
+          });
+          
+          // Criar objeto com os dados completos
+          const simulationData = {
+            produtos: produtosComCostPrice,
+            valorTotal: calcularValorTotal(),
+            isComposition: true
+          };
+          
+          // Codificar e redirecionar
+          const encodedData = encodeURIComponent(JSON.stringify(simulationData));
+          router.push(`/dashboard/produtos/novo?simulation=${encodedData}`);
+        }}
+      >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+            />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
