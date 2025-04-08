@@ -1,7 +1,7 @@
 // src/app/dashboard/vendas/conferencia/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
 import { formatarMoeda, formatarPorcentagem } from '@/utils/moeda';
@@ -9,6 +9,9 @@ import { IMaskInput } from 'react-imask';
 import axios from 'axios';
 import { CurrencyInput } from '../../../../../components/CurrencyInput';
 import { PercentageInput } from '../../../../../components/PercentageInput';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { Dialog, Transition } from '@headlessui/react';
 
 interface Product {
   id: string;
@@ -79,6 +82,10 @@ export default function CheckoutPage() {
   });
   const [observations, setObservations] = useState('');
   const [deliveryFee, setDeliveryFee] = useState(15); // Valor padrão de R$ 15,00
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [isOpen, setIsOpen] = useState(false);
+
 
   useEffect(() => {
     const cartParam = searchParams.get('cart');
@@ -102,6 +109,31 @@ export default function CheckoutPage() {
     paymentDetails.addition.value,
     saleType,
     deliveryFee
+  ]);
+
+  useEffect(() => {
+    if (touchedFields.paymentMethod) {
+      validateForms();
+    }
+  }, [paymentMethod, touchedFields.paymentMethod]);
+  
+  useEffect(() => {
+    if (saleType === 'delivery') {
+      // Valida campos de entrega quando tocados
+      validateForms();
+    }
+  }, [
+    deliveryInfo.customerName, 
+    deliveryInfo.customerPhone,
+    deliveryInfo.deliveryDate,
+    deliveryInfo.deliveryTime,
+    deliveryInfo.address.street,
+    deliveryInfo.address.number,
+    deliveryInfo.address.neighborhood,
+    deliveryInfo.address.city,
+    touchedFields.customerName,
+    touchedFields.customerPhone,
+    // ... outros campos de entrega relevantes
   ]);
 
   const calcularValorTotal = (updateState = false) => {
@@ -166,6 +198,11 @@ export default function CheckoutPage() {
         }
       }));
     }
+  };
+
+  const handleFieldBlur = (fieldName: string) => {
+    setTouchedFields(prev => ({ ...prev, [fieldName]: true }));
+    validateForms(); // Validação em tempo real após sair do campo
   };
 
   const toggleAdjustment = (field: 'discount' | 'addition') => {
@@ -275,7 +312,24 @@ export default function CheckoutPage() {
   };
 
   const handleSubmit = async () => {
-    console.log("tamo aqui")
+
+    if (!validateForms()) {
+      // Mostra toast de erro
+      toast.error('Por favor, preencha todos os campos obrigatórios', {
+        position: "top-center",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+      
+      // Rola a página para o topo para mostrar os erros
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -352,6 +406,59 @@ export default function CheckoutPage() {
       setIsSubmitting(false);
     }
   };
+
+  // Adicione esta função no seu componente
+  const validateForms = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    let isValid = true;
+  
+    // Marca todos os campos obrigatórios como tocados
+    const newTouchedFields = { ...touchedFields };
+    
+    // Validação básica para todos os tipos de venda
+    if (!paymentMethod) {
+      newErrors.paymentMethod = 'Selecione um método de pagamento';
+      newTouchedFields.paymentMethod = true;
+      isValid = false;
+    }
+  
+    // Validação específica para entregas
+    if (saleType === 'delivery') {
+      const requiredFields = [
+        'customerName', 'customerPhone', 'deliveryDate', 'deliveryTime',
+        'address.street', 'address.number', 'address.neighborhood', 'address.city'
+      ];
+  
+      requiredFields.forEach(field => {
+        const fieldValue = field.startsWith('address.') 
+          ? deliveryInfo.address[field.split('.')[1] as keyof typeof deliveryInfo.address]
+          : deliveryInfo[field as keyof typeof deliveryInfo];
+  
+        if (!fieldValue) {
+          const errorKey = field.startsWith('address.') ? field.split('.')[1] : field;
+          newErrors[errorKey] = 'Campo obrigatório';
+          newTouchedFields[errorKey] = true;
+          isValid = false;
+        }
+      });
+    }
+  
+    setTouchedFields(newTouchedFields);
+    setFieldErrors(newErrors);
+    return isValid;
+  };
+
+  // Função para abrir o modal
+  const openCashModal = () => {
+    setIsOpen(true);
+  };
+
+  // Função para fechar o modal
+  const closeCashModal = () => {
+    setIsOpen(false);
+  };
+
+
 
   return (
     <div className="min-h-screen p-6 bg-gray-900 text-white">
@@ -466,18 +573,26 @@ export default function CheckoutPage() {
           <h2 className="text-lg font-semibold mb-4">Informações de Entrega</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Nome do Cliente</label>
+              <label className="block text-sm text-gray-400 mb-1 required-field">Nome do Cliente</label>
               <input
                 type="text"
                 name="customerName"
                 value={deliveryInfo.customerName}
                 onChange={handleDeliveryInfoChange}
-                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                onBlur={() => handleFieldBlur('customerName')}
+                className={`w-full p-3 rounded border ${
+                  fieldErrors.customerName && touchedFields.customerName 
+                    ? 'border-red-500' 
+                    : 'border-gray-600 focus:border-blue-500'
+                } bg-gray-800 text-white`}
                 required
               />
+              {fieldErrors.customerName && touchedFields.customerName && (
+                <p className="mt-1 text-sm text-red-500">{fieldErrors.customerName}</p>
+              )}
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Telefone</label>
+              <label className="block text-sm text-gray-400 mb-1 required-field">Telefone</label>
               <IMaskInput
                 mask="(00) 00000-0000"
                 name="customerPhone"
@@ -488,7 +603,7 @@ export default function CheckoutPage() {
               />
             </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">De</label>
+                <label className="block text-sm text-gray-400 mb-1 required-field">De</label>
                 <input
                   type="text"
                   name="from"
@@ -499,7 +614,7 @@ export default function CheckoutPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Para</label>
+                <label className="block text-sm text-gray-400 mb-1 required-field">Para</label>
                 <input
                   type="text"
                   name="to"
@@ -513,7 +628,7 @@ export default function CheckoutPage() {
               </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Data</label>
+                <label className="block text-sm text-gray-400 mb-1 required-field">Data</label>
                 <input
                   type="date"
                   name="deliveryDate"
@@ -524,7 +639,7 @@ export default function CheckoutPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Hora</label>
+                <label className="block text-sm text-gray-400 mb-1 required-field">Hora</label>
                 <input
                   type="time"
                   name="deliveryTime"
@@ -557,12 +672,11 @@ export default function CheckoutPage() {
                   }}
                   onBlur={handleCepBlur}
                   className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  required
                   disabled={isFetchingCep}
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Número</label>
+                <label className="block text-sm text-gray-400 mb-1 required-field">Número</label>
                 <input
                   type="text"
                   name="address.number"
@@ -575,7 +689,7 @@ export default function CheckoutPage() {
             </div>
             
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Logradouro</label>
+              <label className="block text-sm text-gray-400 mb-1 required-field">Logradouro</label>
               <input
                 type="text"
                 name="address.street"
@@ -588,7 +702,7 @@ export default function CheckoutPage() {
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Bairro</label>
+                <label className="block text-sm text-gray-400 mb-1 required-field">Bairro</label>
                 <input
                   type="text"
                   name="address.neighborhood"
@@ -599,7 +713,7 @@ export default function CheckoutPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Cidade</label>
+                <label className="block text-sm text-gray-400 mb-1 required-field">Cidade</label>
                 <input
                   type="text"
                   name="address.city"
@@ -645,24 +759,12 @@ export default function CheckoutPage() {
         </div>
         )}
 
-<div className="mb-8">
-            <h2 className="text-lg font-semibold mb-4">Método de Pagamento</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {['cash', 'credit_card', 'debit_card', 'pix'].map((method) => (
-                <button
-                  key={method}
-                  onClick={() => setPaymentMethod(method as 'cash' | 'credit_card' | 'debit_card' | 'pix')}
-                  className={`p-4 rounded-lg border ${paymentMethod === method ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600'}`}
-                >
-                  {method === 'cash' && 'Dinheiro'}
-                  {method === 'credit_card' && 'Cartão de Crédito'}
-                  {method === 'debit_card' && 'Cartão de Débito'}
-                  {method === 'pix' && 'PIX'}
-                </button>
-              ))}
-            </div>
-
-            {/* Botões de Desconto e Acréscimo */}
+        <div className="mb-8">
+              <h2 className="text-lg font-semibold mb-4 required-field">Método de Pagamento</h2>
+              {fieldErrors.paymentMethod && (
+                <p className="mb-2 text-sm text-red-500">{fieldErrors.paymentMethod}</p>
+              )}
+              {/* Botões de Desconto e Acréscimo */}
             <div className="grid grid-cols-2 gap-4 mb-4 mt-4">
               <button
                 onClick={() => toggleAdjustment('discount')}
@@ -774,6 +876,28 @@ export default function CheckoutPage() {
               </div>
             </div>
           )}
+              <div className="grid grid-cols-2 gap-4">          
+              {['cash', 'credit_card', 'debit_card', 'pix'].map((method) => (
+                <button
+                  key={method}
+                  onClick={() => {
+                    if(method === 'cash') {
+                      openCashModal();
+                    }
+                    setPaymentMethod(method as 'cash' | 'credit_card' | 'debit_card' | 'pix');
+                    
+                    handleFieldBlur('paymentMethod'); // Marca o campo como tocado
+                    validateForms();
+                  }}
+                  className={`p-4 rounded-lg border ${paymentMethod === method ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600'}`}
+                >
+                  {method === 'cash' && 'Dinheiro'}
+                  {method === 'credit_card' && 'Cartão de Crédito'}
+                  {method === 'debit_card' && 'Cartão de Débito'}
+                  {method === 'pix' && 'PIX'}
+                </button>
+              ))}
+            </div>
 
             {/* Observações*/}
             <div className="mb-4">
@@ -877,11 +1001,8 @@ export default function CheckoutPage() {
         {/* Botão avançar */}
         <button
             onClick={handleSubmit}
-            disabled={isSubmitting || (saleType === 'pickup' && !paymentMethod) || 
-                     (saleType === 'delivery' && (!deliveryInfo.customerName || !deliveryInfo.address.cep || 
-                      !deliveryInfo.address.street || !deliveryInfo.address.number || 
-                      !deliveryInfo.address.neighborhood || !deliveryInfo.address.city))}
-            className="fixed bottom-6 right-6 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700"
+            disabled={isSubmitting}
+            className={`fixed bottom-6 right-6 ${isSubmitting ? 'bg-gray-600' : 'bg-green-600 hover:bg-green-700'} text-white p-4 rounded-full shadow-lg`}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -899,6 +1020,130 @@ export default function CheckoutPage() {
             </svg>
         </button>        
       </div>
+      <ToastContainer
+        position="top-center"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+
+      <Transition appear show={isOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-10" onClose={closeCashModal}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-25" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-800 p-6 text-left align-middle shadow-xl transition-all">
+                  {/* Resumo do Valor */}
+                  <div className="bg-gray-800 p-4 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-gray-400">Subtotal:</span>
+                    <span>{formatarMoeda(cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0))}</span>
+                  </div>
+
+                  {saleType === 'delivery' && (
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-gray-400">Taxa de Entrega:</span>
+                      <span>+{formatarMoeda(deliveryFee)}</span>
+                    </div>
+                  )}
+
+                  {paymentDetails.discount.value > 0 && (
+                  <div className="flex justify-between items-center mb-2 text-red-400">
+                    <span>Desconto:</span>
+                    <span>-{formatarMoeda(
+                      paymentDetails.discount.type === 'percentage' 
+                        ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.discount.value / 100))
+                        : paymentDetails.discount.value
+                    )}</span>
+                  </div>
+                  )}
+
+                {paymentDetails.addition.value > 0 && (
+                  <div className="flex justify-between items-center mb-2 text-green-400">
+                    <span>Acréscimo:</span>
+                    <span>+{formatarMoeda(
+                      paymentDetails.addition.type === 'percentage' 
+                        ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.addition.value / 100))
+                        : paymentDetails.addition.value
+                    )}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-2 border-t border-gray-700">
+                    <span className="font-semibold">Total:</span>
+                    <span className="font-bold text-xl text-green-400">{formatarMoeda(calcularValorTotal())}</span>
+                  </div>
+                </div>
+                  <Dialog.Title
+                    as="h3"
+                    className="text-lg font-medium leading-6 text-white"
+                  >
+                    Calcular Troco
+                  </Dialog.Title>
+                  <div className="mt-4">
+                    <label className="block text-sm text-gray-400 mb-1">Valor Recebido</label>
+                    <CurrencyInput
+                      value={paymentDetails.cashAmount}
+                      onChange={(value) => setPaymentDetails(prev => ({ ...prev, cashAmount: value }))}
+                      className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-700 text-white"
+                    />
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-sm text-gray-400 mb-1">Troco</label>
+                    <div className="w-full p-3 rounded border border-gray-600 bg-gray-700 text-white">
+                      {formatarMoeda(calcularTroco())}
+                    </div>
+                  </div>
+                  <div className="mt-6 flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600"
+                      onClick={closeCashModal}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                      onClick={() => {
+                        closeCashModal();
+                      }}
+                    >
+                      Confirmar
+                    </button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 }
+

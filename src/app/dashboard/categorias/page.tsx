@@ -4,18 +4,22 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
-import { useLoading } from '@/contexts/loading-context'; // Adicione esta importação
-
+import { useLoading } from '@/contexts/loading-context';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import ConfirmationModal from '../../../../components/ConfirmationModal';
 
 export default function CategoriasPage() {
   const router = useRouter();
-  const { setLoading } = useLoading(); // Adicione esta linha
+  const { setLoading } = useLoading();
   interface Categoria {
     id: string;
     name: string;
   }
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [categoriaToDelete, setCategoriaToDelete] = useState<string | null>(null);
 
   // Busca as categorias do Supabase (só no cliente)
   useEffect(() => {
@@ -37,63 +41,77 @@ export default function CategoriasPage() {
     fetchCategorias();
   }, []);
 
+  // Função para abrir o modal de confirmação
+  const openDeleteModal = (id: string) => {
+    setCategoriaToDelete(id);
+    setIsModalOpen(true);
+  };
+
+  // Função para fechar o modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setCategoriaToDelete(null);
+  };
+
   // Função para excluir uma categoria
-  const handleExcluirCategoria = async (id: string) => {
-    const confirmacao = confirm('Tem certeza que deseja excluir esta categoria?');
-    if (!confirmacao) return;
+  const handleExcluirCategoria = async () => {
+    if (!categoriaToDelete) return;
 
-    // Remove os relacionamentos na tabela product_categories
-    const { error: relError } = await supabase
-      .from('product_categories')
-      .delete()
-      .eq('category_id', id);
+    try {
+      // Remove os relacionamentos na tabela product_categories
+      const { error: relError } = await supabase
+        .from('product_categories')
+        .delete()
+        .eq('category_id', categoriaToDelete);
 
-    if (relError) {
-      alert('Erro ao remover relacionamentos da categoria: ' + relError.message);
-      return;
-    }
+      if (relError) throw relError;
 
-    // Remove a categoria da tabela categories
-    const { error } = await supabase
-      .from('categories')
-      .delete()
-      .eq('id', id);
+      // Remove a categoria da tabela categories
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', categoriaToDelete);
 
-    if (error) {
-      alert('Erro ao excluir categoria: ' + error.message);
-    } else {
+      if (error) throw error;
+
       // Atualiza a lista de categorias após a exclusão
-      setCategorias(categorias.filter((categoria) => categoria.id !== id));
-      alert('Categoria excluída com sucesso!');
+      setCategorias(categorias.filter((categoria) => categoria.id !== categoriaToDelete));
+      toast.success('Categoria excluída com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao excluir categoria: '+ (error as Error).message);
+    } finally {
+      closeModal();
     }
   };
 
   return (
     <div className="min-h-screen p-6 bg-gray-900 text-white">
       <h1 className="text-2xl font-bold mb-6 text-white">Categorias</h1>
+      
       {/* Lista de Categorias */}
       <div className="space-y-4">
         {categorias.map((categoria) => (
           <div
             key={categoria.id}
             className="bg-white p-4 rounded-lg shadow-md cursor-pointer hover:bg-gray-50 flex justify-between items-center"
+            onClick={() => {
+              setLoading(true);
+              router.push(`/dashboard/categorias/editar/${categoria.id}`);
+            }}
           >
             <h2
               className="text-xl font-semibold text-gray-800"
-              onClick={() => {
-                setLoading(true); // Adicione esta linha
-                router.push(`/dashboard/categorias/editar/${categoria.id}`)}
-              }
             >
               {categoria.name}
             </h2>
             {/* Ícone de Lixeira para Excluir */}
             <button
               onClick={(e) => {
-                e.stopPropagation(); // Evita que o clique propague para o div pai
-                handleExcluirCategoria(categoria.id);
+                e.stopPropagation();
+                openDeleteModal(categoria.id);
               }}
               className="text-red-500 hover:text-red-700"
+              aria-label="Excluir categoria"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -113,6 +131,17 @@ export default function CategoriasPage() {
           </div>
         ))}
       </div>
+
+      {/* Modal de Confirmação */}
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onConfirm={handleExcluirCategoria}
+        title="Confirmar Exclusão"
+        message="Tem certeza que deseja excluir esta categoria?"
+        confirmText="Excluir"
+        cancelText="Cancelar"
+      />
       <div className="mb-20"></div>
 
       {/* Botão de Voltar no canto inferior esquerdo */}
@@ -156,6 +185,17 @@ export default function CategoriasPage() {
           />
         </svg>
       </button>
+      <ToastContainer
+        position="top-center"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 }

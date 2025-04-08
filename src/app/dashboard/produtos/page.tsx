@@ -8,7 +8,8 @@ import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
 import { formatarMoeda } from '@/utils/moeda';
 import PlaceholderImage from '../../../../components/PlaceholderImage';
 import { useLoading } from '@/contexts/loading-context';
-
+import ConfirmationModal from '../../../../components/ConfirmationModal';
+import { toast, ToastContainer } from 'react-toastify';
 interface Produto {
   id: string;
   name: string;
@@ -38,6 +39,10 @@ export default function ProdutosPage() {
   const scannerModalRef = useRef<{ stopScanner: () => void } | null>(null);
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const { setLoading } = useLoading();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [produtoToInactivate, setProdutoToInactivate] = useState<string | null>(null);
+  const [modalMessage, setModalMessage] = useState('');
+
   
 
   // Busca os produtos e categorias do Supabase (só no cliente)
@@ -176,21 +181,45 @@ const produtosFiltrados = termoPesquisa
     }
   };
 
-  const inativarProduto = async (produtoId: string) => {
-    const confirmacao = window.confirm('Tem certeza que deseja inativar este produto?');
-  
-    if (confirmacao) {
+
+
+  const openInactivationModal = (produtoId: string, isActive: boolean) => {
+    setProdutoToInactivate(produtoId);
+    setModalMessage(
+      isActive
+        ? 'Tem certeza que deseja inativar este produto?'
+        : 'Tem certeza que deseja reativar este produto?'
+    );
+    setIsModalOpen(true);
+  };
+
+  // Função para fechar o modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setProdutoToInactivate(null);
+  };
+
+  // Função para inativar/reativar produto
+  const handleInactivateProduto = async () => {
+    if (!produtoToInactivate) return;
+
+    try {
       const { error } = await supabase
         .from('products')
         .update({ active: false })
-        .eq('id', produtoId);
-  
-      if (error) {
-        console.error('Erro ao inativar produto:', error);
+        .eq('id', produtoToInactivate);
+
+      if (error){
+        toast.error('Erro ao atualizar status do produto: ' + error.message);
+        throw error;
       } else {
-        // Atualiza a lista de produtos após a inativação
-        setProdutos((prevProdutos) => prevProdutos.filter((produto) => produto.id !== produtoId));
+        toast.success('Produto atualizado com sucesso!');
+        setProdutos((prevProdutos) => prevProdutos.filter((produto) => produto.id !== produtoToInactivate));
       }
+    } catch (error) {
+      toast.error('Erro ao atualizar status do produto: ' + (error as Error).message);
+    } finally {
+      closeModal();
     }
   };
 
@@ -320,7 +349,7 @@ const produtosFiltrados = termoPesquisa
             <button
             onClick={(e) => {
               e.stopPropagation();
-              inativarProduto(produto.id);
+              openInactivationModal(produto.id, produto.active || false);
             }}
             className="text-red-500 hover:text-red-700 ml-4"
             title={produto.active ? 'Inativar Produto' : 'Produto Inativo'}
@@ -398,6 +427,19 @@ const produtosFiltrados = termoPesquisa
           }}
         />
       )}
+
+      {/* Modal de Confirmação */}
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onConfirm={handleInactivateProduto}
+        title="Confirmar Ação"
+        message={modalMessage}
+        confirmText="Inativar"
+        cancelText="Cancelar"
+      />
+
+      <ToastContainer />
     </div>
   );
 }

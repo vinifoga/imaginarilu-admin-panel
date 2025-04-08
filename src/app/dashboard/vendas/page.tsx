@@ -9,6 +9,8 @@ import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
 import PlaceholderImage from '../../../../components/PlaceholderImage'; 
 import { useSearchParams } from 'next/navigation';
 import { useLoading } from '@/contexts/loading-context';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface Product {
     id: string;
@@ -157,11 +159,20 @@ export default function VendasPage() {
   const proceedToCheckout = () => {
     setLoading(true);
     if (cartItems.length === 0) {
-      alert('Adicione produtos ao carrinho antes de finalizar a venda');
-      return;
-    }    
-      router.push(`/dashboard/vendas/conferencia?cart=${encodeURIComponent(JSON.stringify(cartItems))}`);
-      setLoading(false);
+      toast.error(`Adicione produtos ao carrinho antes de finalizar a venda`, {
+              position: "top-right",
+              autoClose: 3000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+              progress: undefined,
+            });
+    setLoading(false);
+    } else {    
+        router.push(`/dashboard/vendas/conferencia?cart=${encodeURIComponent(JSON.stringify(cartItems))}`);
+        setLoading(false);
+    }
     };
 
   return (
@@ -387,6 +398,7 @@ export default function VendasPage() {
           />
         )}
       </div>
+      <ToastContainer />
     </div>
   );
 }

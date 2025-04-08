@@ -1,7 +1,7 @@
 // components/SaleDetails.tsx
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Fragment } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
 import { PostgrestError } from '@supabase/supabase-js';
@@ -411,49 +411,50 @@ const { id } = useParams();
                 
                 <tbody>
                 {items.map((item, index) => (
-                  <>
-                    {/* Item principal - sempre visível */}
-                    <tr key={item.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} print:!bg-transparent`}>
-                      <td className="px-2 py-1 md:px-4 md:py-2 print:py-0 print:border-none">
-                        <div className="flex items-center gap-1 print:gap-0">
-                          {item.product_image && (
-                            <div className="w-6 h-6 md:w-8 md:h-8 rounded overflow-hidden print:hidden">
-                              <Image
-                                src={item.product_image}
-                                alt=""
-                                width={32}
-                                height={32}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          )}
-                          <span className="text-sm md:text-base text-gray-700 print:text-xs print:font-bold">
-                            {item.quantity}x {item.product_name}
+                <Fragment key={`item-${item.id}`}>
+                  {/* Item principal - sempre visível */}
+                  <tr className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} print:!bg-transparent`}>
+                    <td className="px-2 py-1 md:px-4 md:py-2 print:py-0 print:border-none">
+                      <div className="flex items-center gap-1 print:gap-0">
+                        {item.product_image && (
+                          <div className="w-6 h-6 md:w-8 md:h-8 rounded overflow-hidden print:hidden">
+                            <Image
+                              src={item.product_image}
+                              alt=""
+                              width={32}
+                              height={32}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <span className="text-sm md:text-base text-gray-700 print:text-xs print:font-bold">
+                          {item.quantity}x {item.product_name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-500 text-sm print:hidden">
+                      {formatarMoeda(item.unit_price)}
+                    </td>
+                    <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-700 font-medium text-sm print:text-xs print:py-0 print:border-none">
+                      {formatarMoeda(item.total_price)}
+                    </td>
+                  </tr>
+
+                  {/* Componentes - visíveis em tela e impressão */}
+                  {item.components?.map((component, compIndex) => (
+                    // Add key to component rows
+                    <tr key={`${item.id}-comp-${component.product_id}-${compIndex}`} className="print:!bg-transparent">
+                      <td className="px-2 py-1 md:px-4 md:py-2 pl-8 print:pl-4 print:py-0 print:border-none">
+                        <div className="flex items-center">
+                          <span className="text-xs text-gray-500 print:text-[0.65rem]">
+                            {component.quantity}x {component.product_name}
                           </span>
                         </div>
                       </td>
-                      <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-500 text-sm print:hidden">
-                        {formatarMoeda(item.unit_price)}
-                      </td>
-                      <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-700 font-medium text-sm print:text-xs print:py-0 print:border-none">
-                        {formatarMoeda(item.total_price)}
-                      </td>
                     </tr>
-
-                    {/* Componentes - visíveis em tela e impressão */}
-                    {item.components?.map((component, compIndex) => (
-                      <tr key={`${item.id}-${compIndex}`} className="print:!bg-transparent">
-                        <td className="px-2 py-1 md:px-4 md:py-2 pl-8 print:pl-4 print:py-0 print:border-none">
-                          <div className="flex items-center">
-                            <span className="text-xs text-gray-500 print:text-[0.65rem]">
-                              {component.quantity}x {component.product_name}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </>
-                ))}
+                  ))}
+                </Fragment>
+              ))}
               </tbody>
               </table>
             </div>

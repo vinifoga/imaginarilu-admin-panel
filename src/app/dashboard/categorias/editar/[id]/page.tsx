@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabaseCliente';
 import { useLoading } from '@/contexts/loading-context';
 import SaveIcon from '../../../../../../components/SaveIcon';
 import LeftArrowIcon from '../../../../../../components/LeftArrowIcon';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function EditarCategoriaPage() {
   const router = useRouter();
@@ -50,9 +52,9 @@ export default function EditarCategoriaPage() {
         .eq('id', categoriaId);
 
       if (error) {
-        alert('Erro ao atualizar categoria: ' + error.message);
+        toast.error('Erro ao atualizar categoria: ' + error.message);
       } else {
-        alert('Categoria atualizada com sucesso!');
+        toast.success('Categoria atualizada com sucesso!');
         router.push('/dashboard/categorias');
       }
     } finally {
@@ -94,6 +96,17 @@ export default function EditarCategoriaPage() {
         >
           <LeftArrowIcon />
         </button>
+        <ToastContainer
+        position="top-center"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 }

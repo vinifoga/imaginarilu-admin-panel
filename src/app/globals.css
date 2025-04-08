@@ -61,3 +61,20 @@ body {
   transform: translateY(-10px);
   transition: opacity 200ms, transform 200ms;
 }
+
+.required-field::after {
+  content: '*';
+  color: #ef4444; /* red-500 */
+  margin-left: 2px;
+}
+
+/* Adicione ao seu arquivo CSS */
+.input-error {
+  border-color: #ef4444 !important; /* red-500 */
+}
+
+.error-message {
+  color: #ef4444; /* red-500 */
+  font-size: 0.875rem; /* text-sm */
+  margin-top: 0.25rem; /* mt-1 */
+}
