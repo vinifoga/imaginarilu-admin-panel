@@ -78,3 +78,44 @@ body {
   font-size: 0.875rem; /* text-sm */
   margin-top: 0.25rem; /* mt-1 */
 }
+
+@media print {
+  .status-step {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+  body {
+    width: 80mm;
+    margin: 0;
+    padding: 2mm;
+    font-family: 'Lucida Console', monospace;
+    font-size: 9px;
+  }
+  
+  .thermal-status {
+    display: block !important;
+    margin: 2mm 0;
+    padding: 1mm 0;
+    border-top: 1px dashed #000;
+    border-bottom: 1px dashed #000;
+  }
+  
+  .status-step {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+}
+
+.print-receipt {
+  font-family: 'Lucida Console', monospace;
+  font-size: 9px;
+}

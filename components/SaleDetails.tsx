@@ -338,6 +338,45 @@ const { id } = useParams();
     return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
   }
 
+  const ThermalStatus = ({ currentStatus }: { currentStatus: OrderStatus }) => {
+    const steps = [
+      OrderStatus.PENDING,
+      OrderStatus.PAID,
+      OrderStatus.PACKED,
+      OrderStatus.DELIVERED
+    ];
+  
+    const currentIndex = steps.indexOf(currentStatus);
+    const isDelivered = currentStatus === OrderStatus.DELIVERED;
+  
+    return (
+      <div className="hidden thermal-status print:block">
+        <div className="flex justify-between items-center px-1">
+          {steps.map((status, index) => {
+            const isCompleted = index < currentIndex;
+            const isCurrent = index === currentIndex && !isDelivered;
+            
+            return (
+              <div key={status} className="flex flex-col items-center flex-1">
+                <div className={`w-4 h-4 flex items-center justify-center 
+                  ${isCompleted ? 'bg-black text-white' : 
+                    isCurrent ? 'border-2 border-black' : 
+                    'border border-gray-400'}`}>
+                  {isCompleted ? '✓' : isCurrent ? '•' : ''}
+                </div>
+                <span className={`text-[7px] mt-1 text-center ${
+                  isCurrent ? 'font-bold' : ''
+                }`}>
+                  {status.split(' ')[0]}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen p-2 md:p-6 bg-gray-900 text-white print:bg-white print:text-black">
       <div className="max-w-4xl mx-auto print:max-w-none">
@@ -352,12 +391,13 @@ const { id } = useParams();
             }`}>
               {sale.sale_type === 'delivery' ? <FiTruck size={14} /> : <FiHome size={14} />}
               <span>{sale.sale_type === 'delivery' ? 'Entrega' : 'Retira'}</span>
-              <OrderBadge 
+              <div className="print:hidden"><OrderBadge 
                 status={getStatusEnum(sale.status)} 
                 onChange={handleStatusChange}
                 key={sale.status}
                 // Esconde o badge na impressão
               />
+              </div>
             </div>
 
             {/* Mostra apenas 1 imagem principal na impressão */}
@@ -387,6 +427,11 @@ const { id } = useParams();
               {formatarData(sale.created_at)}
             </p>
           </div>
+
+         {/* Status Timeline */}
+         <ThermalStatus 
+            currentStatus={getStatusEnum(sale.status)} 
+          />
 
           {/* Cliente - apenas nome e telefone */}
           {sale.sale_type === 'delivery' && deliveryInfo && (

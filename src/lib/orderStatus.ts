@@ -11,6 +11,16 @@ export enum OrderStatus {
   AWAITING_PICKUP = "Aguardando Retirada",
 }
 
+export const StatusFlow = [
+  OrderStatus.PENDING,
+  OrderStatus.PROCESSING,
+  OrderStatus.AWAITING_PAYMENT,
+  OrderStatus.PAID,
+  OrderStatus.PACKED,
+  OrderStatus.AWAITING_PICKUP,
+  OrderStatus.DELIVERED,
+];
+
 export const getStatusFromTranslation = (
   translatedStatus: string
 ): OrderStatus => {
