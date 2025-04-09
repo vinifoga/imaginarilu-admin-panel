@@ -16,11 +16,13 @@ interface Product {
   sku: string;
   sale_price: number;
   image_url: string | null;
+  is_composition?: boolean;
 }
 
 interface SimulatedProduct {
   product: Product;
   quantity: number;
+  is_composition?: boolean;
 }
 
 export default function SimulacaoPage() {
@@ -46,6 +48,7 @@ export default function SimulacaoPage() {
         barcode,
         sku,
         sale_price,
+        is_composition,
         product_images (image_url)
       `)
       .or(`barcode.ilike.%${termo}%,sku.ilike.%${termo}%,name.ilike.%${termo}%`)
@@ -62,6 +65,7 @@ export default function SimulacaoPage() {
         sku: produto.sku,
         sale_price: produto.sale_price,
         image_url: produto.product_images[0]?.image_url || null,
+        is_composition: produto.is_composition,
       }));
       setResultadosPesquisa(produtosComImagem);
     }
@@ -79,7 +83,7 @@ export default function SimulacaoPage() {
       setProdutosSimulados(novosProdutos);
     } else {
       // Se não existe, adiciona novo produto
-      setProdutosSimulados([...produtosSimulados, { product: produto, quantity: quantidade }]);
+      setProdutosSimulados([...produtosSimulados, { product: produto, quantity: quantidade, is_composition: produto.is_composition }]);
     }
 
     // Limpa a pesquisa
@@ -298,6 +302,8 @@ export default function SimulacaoPage() {
         )}
       </div>
 
+      <div className="mb-20"></div>
+
       {/* Botão de Voltar no canto inferior esquerdo */}
       <button
         onClick={() => router.push('/dashboard')}
@@ -318,6 +324,39 @@ export default function SimulacaoPage() {
           />
         </svg>
       </button>
+
+      {produtosSimulados.length > 0 && (
+      <>
+        <button
+          className="fixed bottom-6 right-25 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700"
+          onClick={() => {
+            // Lógica para criar orçamento
+            const orcamentoData = {
+              produtos: produtosSimulados,
+              valorTotal: calcularValorTotal(),
+              dataValidade: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) // 3 dias a partir de agora
+            };
+            localStorage.setItem('orcamentoAtual', JSON.stringify(orcamentoData));
+            window.open('/dashboard/orcamento/impressao', '_blank');
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+        </button>
+      </>
+    )}
 
       {/* Botão para criar produto composto (opcional) */}
       {produtosSimulados.length > 0 && (
