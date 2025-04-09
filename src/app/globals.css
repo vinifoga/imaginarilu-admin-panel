@@ -91,31 +91,75 @@ body {
     size: 80mm auto;
     margin: 0;
   }
+  
   body {
-    width: 80mm;
-    margin: 0;
-    padding: 2mm;
-    font-family: 'Lucida Console', monospace;
-    font-size: 9px;
+    width: 80mm !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    font-family: 'Lucida Console', monospace !important;
+    font-size: 9px !important;
+    background: white !important;
+    color: black !important;
+  }
+  
+  body * {
+    visibility: hidden;
+    background: white !important;
+    color: black !important;
+  }
+  
+  .thermal-receipt,
+  .thermal-receipt * {
+    visibility: visible;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+  
+  .thermal-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 76mm !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    border: none !important;
+  }
+  
+  .print-client .delivery-info,
+  .print-client .notes-section,
+  .print-client .additional-info {
+    display: none !important;
   }
   
   .thermal-status {
     display: block !important;
-    margin: 2mm 0;
-    padding: 1mm 0;
-    border-top: 1px dashed #000;
-    border-bottom: 1px dashed #000;
+    margin: 2mm 0 !important;
+    padding: 1mm 0 !important;
+    border-top: 1px dashed #000 !important;
+    border-bottom: 1px dashed #000 !important;
   }
   
-  .status-step {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
+  /* Esconde elementos que não devem aparecer na impressão */
+  .thermal-receipt .print-hidden,
+  .print-hidden {
+    display: none !important;
   }
-}
-
-.print-receipt {
-  font-family: 'Lucida Console', monospace;
-  font-size: 9px;
+  
+  /* Ajustes específicos para elementos da impressão */
+  .thermal-receipt table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  
+  .thermal-receipt td, 
+  .thermal-receipt th {
+    padding: 1px 2px !important;
+    border: none !important;
+  }
+  
+  .thermal-receipt img {
+    max-width: 20mm !important;
+    height: auto !important;
+  }
 }

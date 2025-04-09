@@ -15,6 +15,7 @@ import { OrderBadge } from './OrderBadge';
 import { getStatusFromTranslation, OrderStatus } from '@/lib/orderStatus';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ConfirmationModal from './ConfirmationModal';
 
 interface Sale {
   id: string;
@@ -109,6 +110,8 @@ const { id } = useParams();
   const [items, setItems] = useState<SaleItem[]>([]);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printForClient, setPrintForClient] = useState(false);
 
   // Função para gerar um ID curto a partir do UUID
   const getShortId = (id: string) => {
@@ -258,8 +261,15 @@ const { id } = useParams();
     }
   }, [router]);
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = (forClient = false) => {
+    setPrintForClient(forClient);
+    
+    // Pequeno delay para garantir que o estado foi atualizado
+    setTimeout(() => {
+      window.print();
+      // Resetar o estado após a impressão
+      setTimeout(() => setPrintForClient(false), 1000);
+    }, 100);
   };
 
   const getTopItemsImages = () => {
@@ -380,10 +390,10 @@ const { id } = useParams();
   return (
     <div className="min-h-screen p-2 md:p-6 bg-gray-900 text-white print:bg-white print:text-black">
       <div className="max-w-4xl mx-auto print:max-w-none">
-        <div 
-          ref={receiptRef}
-          className="bg-white p-4 md:p-8 rounded-lg shadow-lg print:shadow-none print:p-0 print:rounded-none"
-        >
+      <div 
+        ref={receiptRef}
+        className={`thermal-receipt bg-white p-4 md:p-8 rounded-lg shadow-lg print:shadow-none print:p-0 print:rounded-none ${printForClient ? 'print-client' : ''}`}
+      >
           {/* Cabeçalho simplificado para impressão */}
           <div className="flex flex-col items-center mb-4 print:mb-2">
             <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs md:text-sm font-medium mb-3 print:mb-1 ${
@@ -541,7 +551,7 @@ const { id } = useParams();
 
           {/* Observações - apenas texto simples */}
           {sale.notes && (
-            <div className="mb-4 bg-gray-50 p-2 print:bg-transparent print:p-0 print:py-1">
+          <div className="mb-4 bg-gray-50 p-2 print:bg-transparent print:p-0 print:py-1 notes-section">
               <p className="text-xs text-gray-700 whitespace-pre-line">
                 <strong className="print:font-normal">Obs:</strong> {sale.notes}
               </p>
@@ -562,7 +572,7 @@ const { id } = useParams();
           
 
           {deliveryInfo?.additional_info && (
-            <div className="mt-3">
+          <div className="mt-3 additional-info">
               <p className="text-sm text-gray-700">
                 <strong>Informações Adicionais:</strong> {deliveryInfo.additional_info}
               </p>
@@ -615,7 +625,7 @@ const { id } = useParams();
 
           {/* Informações de entrega - versão para impressão */}
           {sale.sale_type === 'delivery' && deliveryInfo && (
-            <div className="hidden print:block border-t border-gray-300 pt-2 mt-2">
+          <div className="hidden print:block border-t border-gray-300 pt-2 mt-2 delivery-info">
               <h3 className="font-bold text-gray-800 mb-2">Informações de Entrega</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -663,7 +673,7 @@ const { id } = useParams();
             </button>
             
             <button
-              onClick={handlePrint}
+              onClick={() => setShowPrintModal(true)}
               className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700"
             >
               <PrintIcon />
@@ -672,7 +682,24 @@ const { id } = useParams();
         </div>
       </div>
       <ToastContainer />
+
+      {/* Modal de Confirmação de Impressão */}
+      <ConfirmationModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        onConfirm={() => {
+          setShowPrintModal(false);
+          handlePrint(true); // Imprime a via do cliente
+        }}
+        onCancel={() => {
+          setShowPrintModal(false);
+          handlePrint(); // Imprime apenas a via da loja (false é o padrão)
+        }}
+        title="Imprimir Comprovante"
+        message="Qual via quer imprimir?"
+        confirmText="Cliente"
+        cancelText="Loja"
+      />
     </div>
   );
 }
-
