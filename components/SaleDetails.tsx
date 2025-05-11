@@ -69,41 +69,41 @@ interface DeliveryInfo {
 }
 
 interface SaleDetailsProps {
-    backRoute?: string;
-  }
+  backRoute?: string;
+}
 
-  interface Product {
-    id: string;
-    name: string;
-    is_composition: boolean;
-  }
-  
-  interface SaleItemWithProduct {
-    id: string;
-    quantity: number;
-    unit_price: number;
-    total_price: number;
-    product_id: string;
-    products: Product | null;
-  }
-  
-  interface ProductImage {
-    image_url: string;
-  }
-  
-  interface NestedProduct {
-    name: string;
-    product_images?: ProductImage[];
-  }
-  
-  interface ProductComponentDB {
-    component_product_id: string;
-    quantity: number;
-    products?: NestedProduct | null;
-  }
+interface Product {
+  id: string;
+  name: string;
+  is_composition: boolean;
+}
+
+interface SaleItemWithProduct {
+  id: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  product_id: string;
+  products: Product | null;
+}
+
+interface ProductImage {
+  image_url: string;
+}
+
+interface NestedProduct {
+  name: string;
+  product_images?: ProductImage[];
+}
+
+interface ProductComponentDB {
+  component_product_id: string;
+  quantity: number;
+  products?: NestedProduct | null;
+}
 
 export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDetailsProps) {
-const { id } = useParams();
+  const { id } = useParams();
   const router = useRouter();
   const receiptRef = useRef<HTMLDivElement>(null);
   const [sale, setSale] = useState<Sale | null>(null);
@@ -116,6 +116,17 @@ const { id } = useParams();
   // Função para gerar um ID curto a partir do UUID
   const getShortId = (id: string) => {
     return id.slice(0, 8).toUpperCase();
+  };
+
+  // Função para formatar o intervalo de hora
+  const formatTimeInterval = (time: string) => {
+    if (!time) return 'Não especificado';
+
+    // Extrai apenas a hora (HH:MM)
+    const hour = time.split(':')[0];
+    const nextHour = String(parseInt(hour) + 1).padStart(2, '0');
+
+    return `${hour}:00 às ${nextHour}:00`;
   };
 
   useEffect(() => {
@@ -134,8 +145,8 @@ const { id } = useParams();
 
         // Buscar itens da venda
         const { data: itemsData, error: itemsError } = await supabase
-        .from('sale_items')
-        .select(`
+          .from('sale_items')
+          .select(`
           id,
           quantity,
           unit_price,
@@ -146,32 +157,32 @@ const { id } = useParams();
             is_composition
           )
         `)
-        .eq('sale_id', id) as { data: unknown[] | null, error: PostgrestError | null };
+          .eq('sale_id', id) as { data: unknown[] | null, error: PostgrestError | null };
 
-      if (itemsError) throw itemsError;
+        if (itemsError) throw itemsError;
 
-      if (itemsData !== null) {
-  const formattedItems = await Promise.all(
-    (itemsData as SaleItemWithProduct[]).map(async (item) => {
-      // Buscar imagem do item principal
-      const { data: imagensData } = await supabase
-        .from('product_images')
-        .select('image_url')
-        .eq('product_id', item.product_id)
-        .limit(1);
+        if (itemsData !== null) {
+          const formattedItems = await Promise.all(
+            (itemsData as SaleItemWithProduct[]).map(async (item) => {
+              // Buscar imagem do item principal
+              const { data: imagensData } = await supabase
+                .from('product_images')
+                .select('image_url')
+                .eq('product_id', item.product_id)
+                .limit(1);
 
-      const baseItem = {
-        ...item,
-        product_name: item.products?.name || '',
-        product_image: imagensData?.[0]?.image_url || null,
-        is_composition: item.products?.is_composition || false,
-      };
+              const baseItem = {
+                ...item,
+                product_name: item.products?.name || '',
+                product_image: imagensData?.[0]?.image_url || null,
+                is_composition: item.products?.is_composition || false,
+              };
 
-      // Se for um produto composto, buscar seus componentes
-      if (item.products?.is_composition) {
-        const { data: componentsData } = await supabase
-          .from('product_components')
-          .select(`
+              // Se for um produto composto, buscar seus componentes
+              if (item.products?.is_composition) {
+                const { data: componentsData } = await supabase
+                  .from('product_components')
+                  .select(`
             component_product_id,
             quantity,
             products:component_product_id (
@@ -181,38 +192,38 @@ const { id } = useParams();
               )
             )
           `)
-          .eq('parent_product_id', item.product_id);
+                  .eq('parent_product_id', item.product_id);
 
-          const components = await Promise.all(
-            (componentsData as ProductComponentDB[] | null)?.map(async (component) => {
-            // Buscar preço do componente
-            const { data: priceData } = await supabase
-              .from('products')
-              .select('sale_price')
-              .eq('id', component.component_product_id)
-              .single();
+                const components = await Promise.all(
+                  (componentsData as ProductComponentDB[] | null)?.map(async (component) => {
+                    // Buscar preço do componente
+                    const { data: priceData } = await supabase
+                      .from('products')
+                      .select('sale_price')
+                      .eq('id', component.component_product_id)
+                      .single();
 
-            // Acessar propriedades com segurança
-            const productName = component.products?.name || '';
-            const productImage = component.products?.product_images?.[0]?.image_url || null;
-            const componentPrice = priceData?.sale_price || 0;
-            const componentQuantity = component.quantity * item.quantity;
+                    // Acessar propriedades com segurança
+                    const productName = component.products?.name || '';
+                    const productImage = component.products?.product_images?.[0]?.image_url || null;
+                    const componentPrice = priceData?.sale_price || 0;
+                    const componentQuantity = component.quantity * item.quantity;
 
-            return {
-              product_id: component.component_product_id,
-              product_name: productName,
-              product_image: productImage,
-              quantity: componentQuantity,
-              unit_price: componentPrice,
-              total_price: componentPrice * componentQuantity,
-            };
-          }) || []
-        );
+                    return {
+                      product_id: component.component_product_id,
+                      product_name: productName,
+                      product_image: productImage,
+                      quantity: componentQuantity,
+                      unit_price: componentPrice,
+                      total_price: componentPrice * componentQuantity,
+                    };
+                  }) || []
+                );
 
-        return {
-          ...baseItem,
-          components,
-        };
+                return {
+                  ...baseItem,
+                  components,
+                };
               }
 
               return baseItem;
@@ -250,7 +261,7 @@ const { id } = useParams();
     // Verifica se veio da preparação de pedido
     const urlParams = new URLSearchParams(window.location.search);
     const fromPreparation = urlParams.get('fromPreparation');
-    
+
     if (fromPreparation === 'true') {
       // Pequeno delay para garantir que o componente está renderizado
       setTimeout(() => {
@@ -263,7 +274,7 @@ const { id } = useParams();
 
   const handlePrint = (forClient = false) => {
     setPrintForClient(forClient);
-    
+
     // Pequeno delay para garantir que o estado foi atualizado
     setTimeout(() => {
       window.print();
@@ -296,14 +307,14 @@ const { id } = useParams();
     try {
       // Converte o enum para o formato do banco de dados
       const dbStatus = getStatusFromTranslation(newStatus).toString();
-      
+
       const { error } = await supabase
         .from('sales')
         .update({ status: dbStatus })
         .eq('id', id);
-  
+
       if (error) throw error;
-  
+
       // Atualiza o estado local de forma mais eficiente
       setSale(prev => {
         console.log(prev)
@@ -314,7 +325,7 @@ const { id } = useParams();
           status: getStatusFromTranslation(newStatus)
         };
       });
-      
+
       toast.success(`Status atualizado para ${newStatus}`, {
         position: "top-right",
         autoClose: 3000,
@@ -324,7 +335,7 @@ const { id } = useParams();
         draggable: true,
         progress: undefined,
       });
-      
+
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       toast.error('Erro ao atualizar status do pedido', {
@@ -338,15 +349,10 @@ const { id } = useParams();
       });
     }
   };
-  
+
   const getStatusEnum = (statusString: string): OrderStatus => {
     return OrderStatus[statusString as keyof typeof OrderStatus];
   };
-  
-  function formatarHora(delivery_time: string): React.ReactNode {
-    const [hours, minutes] = delivery_time.split(':');
-    return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
-  }
 
   const ThermalStatus = ({ currentStatus }: { currentStatus: OrderStatus }) => {
     const steps = [
@@ -355,28 +361,27 @@ const { id } = useParams();
       OrderStatus.PACKED,
       OrderStatus.DELIVERED
     ];
-  
+
     const currentIndex = steps.indexOf(currentStatus);
     const isDelivered = currentStatus === OrderStatus.DELIVERED;
-  
+
     return (
       <div className="hidden thermal-status print:block">
         <div className="flex justify-between items-center px-1">
           {steps.map((status, index) => {
             const isCompleted = index < currentIndex;
             const isCurrent = index === currentIndex && !isDelivered;
-            
+
             return (
               <div key={status} className="flex flex-col items-center flex-1">
                 <div className={`w-4 h-4 flex items-center justify-center 
-                  ${isCompleted ? 'bg-black text-white' : 
-                    isCurrent ? 'border-2 border-black' : 
-                    'border border-gray-400'}`}>
+                  ${isCompleted ? 'bg-black text-white' :
+                    isCurrent ? 'border-2 border-black' :
+                      'border border-gray-400'}`}>
                   {isCompleted ? '✓' : isCurrent ? '•' : ''}
                 </div>
-                <span className={`text-[7px] mt-1 text-center ${
-                  isCurrent ? 'font-bold' : ''
-                }`}>
+                <span className={`text-[7px] mt-1 text-center ${isCurrent ? 'font-bold' : ''
+                  }`}>
                   {status.split(' ')[0]}
                 </span>
               </div>
@@ -390,22 +395,21 @@ const { id } = useParams();
   return (
     <div className="min-h-screen p-2 md:p-6 bg-gray-900 text-white print:bg-white print:text-black">
       <div className="max-w-4xl mx-auto print:max-w-none">
-      <div 
-        ref={receiptRef}
-        className={`thermal-receipt bg-white p-4 md:p-8 rounded-lg shadow-lg print:shadow-none print:p-0 print:rounded-none ${printForClient ? 'print-client' : ''}`}
-      >
+        <div
+          ref={receiptRef}
+          className={`thermal-receipt bg-white p-4 md:p-8 rounded-lg shadow-lg print:shadow-none print:p-0 print:rounded-none ${printForClient ? 'print-client' : ''}`}
+        >
           {/* Cabeçalho simplificado para impressão */}
           <div className="flex flex-col items-center mb-4 print:mb-2">
-            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs md:text-sm font-medium mb-3 print:mb-1 ${
-              sale.sale_type === 'delivery' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-            }`}>
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs md:text-sm font-medium mb-3 print:mb-1 ${sale.sale_type === 'delivery' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+              }`}>
               {sale.sale_type === 'delivery' ? <FiTruck size={14} /> : <FiHome size={14} />}
               <span>{sale.sale_type === 'delivery' ? 'Entrega' : 'Retira'}</span>
-              <div className="print:hidden"><OrderBadge 
-                status={getStatusEnum(sale.status)} 
+              <div className="print:hidden"><OrderBadge
+                status={getStatusEnum(sale.status)}
                 onChange={handleStatusChange}
                 key={sale.status}
-                // Esconde o badge na impressão
+              // Esconde o badge na impressão
               />
               </div>
             </div>
@@ -438,9 +442,9 @@ const { id } = useParams();
             </p>
           </div>
 
-         {/* Status Timeline */}
-         <ThermalStatus 
-            currentStatus={getStatusEnum(sale.status)} 
+          {/* Status Timeline */}
+          <ThermalStatus
+            currentStatus={getStatusEnum(sale.status)}
           />
 
           {/* Cliente - apenas nome e telefone */}
@@ -463,60 +467,60 @@ const { id } = useParams();
                     <th className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-700">Total</th>
                   </tr>
                 </thead>
-                
-                <tbody>
-                {items.map((item, index) => (
-                <Fragment key={`item-${item.id}`}>
-                  {/* Item principal - sempre visível */}
-                  <tr className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} print:!bg-transparent`}>
-                    <td className="px-2 py-1 md:px-4 md:py-2 print:py-0 print:border-none">
-                      <div className="flex items-center gap-1 print:gap-0">
-                        {item.product_image && (
-                          <div className="w-6 h-6 md:w-8 md:h-8 rounded overflow-hidden print:hidden">
-                            <Image
-                              src={item.product_image}
-                              alt=""
-                              width={32}
-                              height={32}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        )}
-                        <span className="text-sm md:text-base text-gray-700 print:text-xs print:font-bold">
-                          {item.quantity}x {item.product_name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-500 text-sm print:hidden">
-                      {formatarMoeda(item.unit_price)}
-                    </td>
-                    <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-700 font-medium text-sm print:text-xs print:py-0 print:border-none">
-                      {formatarMoeda(item.total_price)}
-                    </td>
-                  </tr>
 
-                  {/* Componentes - visíveis em tela e impressão */}
-                  {item.components?.map((component, compIndex) => (
-                    // Add key to component rows
-                    <tr key={`${item.id}-comp-${component.product_id}-${compIndex}`} className="print:!bg-transparent">
-                      <td className="px-2 py-1 md:px-4 md:py-2 pl-8 print:pl-4 print:py-0 print:border-none">
-                        <div className="flex items-center">
-                          <span className="text-xs text-gray-500 print:text-[0.65rem]">
-                            {component.quantity}x {component.product_name}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
+                <tbody>
+                  {items.map((item, index) => (
+                    <Fragment key={`item-${item.id}`}>
+                      {/* Item principal - sempre visível */}
+                      <tr className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} print:!bg-transparent`}>
+                        <td className="px-2 py-1 md:px-4 md:py-2 print:py-0 print:border-none">
+                          <div className="flex items-center gap-1 print:gap-0">
+                            {item.product_image && (
+                              <div className="w-6 h-6 md:w-8 md:h-8 rounded overflow-hidden print:hidden">
+                                <Image
+                                  src={item.product_image}
+                                  alt=""
+                                  width={32}
+                                  height={32}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
+                            <span className="text-sm md:text-base text-gray-700 print:text-xs print:font-bold">
+                              {item.quantity}x {item.product_name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-500 text-sm print:hidden">
+                          {formatarMoeda(item.unit_price)}
+                        </td>
+                        <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-700 font-medium text-sm print:text-xs print:py-0 print:border-none">
+                          {formatarMoeda(item.total_price)}
+                        </td>
+                      </tr>
+
+                      {/* Componentes - visíveis em tela e impressão */}
+                      {item.components?.map((component, compIndex) => (
+                        // Add key to component rows
+                        <tr key={`${item.id}-comp-${component.product_id}-${compIndex}`} className="print:!bg-transparent">
+                          <td className="px-2 py-1 md:px-4 md:py-2 pl-8 print:pl-4 print:py-0 print:border-none">
+                            <div className="flex items-center">
+                              <span className="text-xs text-gray-500 print:text-[0.65rem]">
+                                {component.quantity}x {component.product_name}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </Fragment>
                   ))}
-                </Fragment>
-              ))}
-              </tbody>
+                </tbody>
               </table>
             </div>
           </div>
 
           {/* Resumo financeiro - uma coluna apenas */}
-          <div className="mb-4 print:mb-2">            
+          <div className="mb-4 print:mb-2">
             <div className="bg-gray-50 p-2 rounded-lg print:bg-transparent print:p-0 print:border-t print:border-b print:border-gray-300 print:py-1">
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between text-gray-700">
@@ -534,12 +538,12 @@ const { id } = useParams();
                     <span className="text-gray-700">Acréscimo:</span>
                     <span>+{formatarMoeda(sale.addition_amount)}</span>
                   </div>
-                  )}
+                )}
                 {!!sale.discount_amount && (
-                <div className="flex justify-between items-center mb-2 text-gray-700">
-                  <span className="text-gray-700">Desconto:</span>
-                  <span>-{formatarMoeda(sale.discount_amount)}</span>
-                </div>
+                  <div className="flex justify-between items-center mb-2 text-gray-700">
+                    <span className="text-gray-700">Desconto:</span>
+                    <span>-{formatarMoeda(sale.discount_amount)}</span>
+                  </div>
                 )}
                 <div className="flex justify-between font-bold pt-1 border-t text-gray-700 print:border-t-0">
                   <span>TOTAL:</span>
@@ -551,28 +555,28 @@ const { id } = useParams();
 
           {/* Observações - apenas texto simples */}
           {sale.notes && (
-          <div className="mb-4 bg-gray-50 p-2 print:bg-transparent print:p-0 print:py-1 notes-section">
+            <div className="mb-4 bg-gray-50 p-2 print:bg-transparent print:p-0 print:py-1 notes-section">
               <p className="text-xs text-gray-700 whitespace-pre-line">
                 <strong className="print:font-normal">Obs:</strong> {sale.notes}
               </p>
             </div>
           )}
-          
-            {deliveryInfo?.from && (
+
+          {deliveryInfo?.from && (
             <p className="text-sm text-gray-700">
               <strong>De:</strong> {deliveryInfo.from}
             </p>
-            )}
-            
-            {deliveryInfo?.to && (
-              <p className="text-sm text-gray-700">
-                <strong>Para:</strong> {deliveryInfo?.to}
-              </p>
-            )}
-          
+          )}
+
+          {deliveryInfo?.to && (
+            <p className="text-sm text-gray-700">
+              <strong>Para:</strong> {deliveryInfo?.to}
+            </p>
+          )}
+
 
           {deliveryInfo?.additional_info && (
-          <div className="mt-3 additional-info">
+            <div className="mt-3 additional-info">
               <p className="text-sm text-gray-700">
                 <strong>Informações Adicionais:</strong> {deliveryInfo.additional_info}
               </p>
@@ -584,7 +588,7 @@ const { id } = useParams();
           {sale.sale_type === 'delivery' && deliveryInfo && (
             <div className="mb-4 p-4 bg-gray-50 rounded-lg print:hidden">
               <h3 className="font-bold text-gray-800 mb-2">Informações de Entrega</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-700">
@@ -594,9 +598,9 @@ const { id } = useParams();
                     <strong>Para:</strong> {deliveryInfo.to}
                   </p>
                   <p className="text-sm text-gray-700">
-                    <strong>Data:</strong> {formatarData(deliveryInfo.delivery_date)} 
-                    <span className="mx-2"></span> 
-                    <strong>Hora:</strong> {formatarHora(deliveryInfo.delivery_time)} 
+                    <strong>Data:</strong> {formatarData(deliveryInfo.delivery_date)}
+                    <span className="mx-2"></span>
+                    <strong>Hora:</strong> {formatTimeInterval(deliveryInfo.delivery_time)}
                   </p>
                   <p className="text-sm text-gray-700">
                     <strong>Endereço:</strong> {deliveryInfo.street}, {deliveryInfo.number}
@@ -607,7 +611,7 @@ const { id } = useParams();
                     </p>
                   )}
                 </div>
-                
+
                 <div>
                   <p className="text-sm text-gray-700">
                     <strong>Bairro:</strong> {deliveryInfo.neighborhood}
@@ -625,18 +629,18 @@ const { id } = useParams();
 
           {/* Informações de entrega - versão para impressão */}
           {sale.sale_type === 'delivery' && deliveryInfo && (
-          <div className="hidden print:block border-t border-gray-300 pt-2 mt-2 delivery-info">
+            <div className="hidden print:block border-t border-gray-300 pt-2 mt-2 delivery-info">
               <h3 className="font-bold text-gray-800 mb-2">Informações de Entrega</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-700">
-                    <strong>Para:</strong> {deliveryInfo.to} 
+                    <strong>Para:</strong> {deliveryInfo.to}
                   </p>
                   <p className="text-sm text-gray-700">
-                    <strong>Data:</strong> {formatarData(deliveryInfo.delivery_date)} 
-                    <span className="mx-2"></span> 
-                    <strong>Hora:</strong> {formatarHora(deliveryInfo.delivery_time)} 
+                    <strong>Data:</strong> {formatarData(deliveryInfo.delivery_date)}
+                    <span className="mx-2"></span>
+                    <strong>Hora:</strong> {formatTimeInterval(deliveryInfo.delivery_time)}
                   </p>
                   <p className="text-sm text-gray-700">
                     <strong>Endereço:</strong> {deliveryInfo.street}, {deliveryInfo.number}
@@ -647,7 +651,7 @@ const { id } = useParams();
                     </p>
                   )}
                 </div>
-                
+
                 <div>
                   <p className="text-sm text-gray-700">
                     <strong>Bairro:</strong> {deliveryInfo.neighborhood}
@@ -671,7 +675,7 @@ const { id } = useParams();
             >
               <LeftArrowIcon />
             </button>
-            
+
             <button
               onClick={() => setShowPrintModal(true)}
               className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700"

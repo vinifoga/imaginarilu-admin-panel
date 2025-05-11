@@ -45,6 +45,15 @@ interface PaymentAdjustment {
 }
 
 export default function CheckoutPage() {
+
+  const generateTimeIntervals = () => {
+    const intervals = [];
+    for (let hour = 7; hour < 19; hour++) {
+      intervals.push(`${hour.toString().padStart(2, '0')}:00 às ${(hour + 1).toString().padStart(2, '0')}:00`);
+    }
+    return intervals;
+  };
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -77,14 +86,15 @@ export default function CheckoutPage() {
     cashAmount: 0,
     showDiscount: false,
     showAddition: false,
-    discount_amount: 0, 
-    addition_amount: 0  
+    discount_amount: 0,
+    addition_amount: 0
   });
   const [observations, setObservations] = useState('');
   const [deliveryFee, setDeliveryFee] = useState(15); // Valor padrão de R$ 15,00
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isOpen, setIsOpen] = useState(false);
+  const [availableIntervals, setAvailableIntervals] = useState<string[]>(generateTimeIntervals());
 
 
   useEffect(() => {
@@ -102,8 +112,8 @@ export default function CheckoutPage() {
   useEffect(() => {
     calcularValorTotal(true);
   }, [
-    cartItems, 
-    paymentDetails.discount.type, 
+    cartItems,
+    paymentDetails.discount.type,
     paymentDetails.discount.value,
     paymentDetails.addition.type,
     paymentDetails.addition.value,
@@ -116,45 +126,43 @@ export default function CheckoutPage() {
       validateForms();
     }
   }, [paymentMethod, touchedFields.paymentMethod]);
-  
+
   useEffect(() => {
-    if (saleType === 'delivery') {
-      // Valida campos de entrega quando tocados
-      validateForms();
+    if (saleType === 'delivery' && deliveryInfo.deliveryDate) {
+      const fetchIntervals = async () => {
+        const intervals = await checkAvailableIntervals(deliveryInfo.deliveryDate);
+        setAvailableIntervals(intervals);
+
+        // Se o intervalo selecionado não estiver mais disponível, limpe o campo
+        if (deliveryInfo.deliveryTime && !intervals.some(interval =>
+          interval.startsWith(deliveryInfo.deliveryTime.substring(0, 5)))) {
+          setDeliveryInfo(prev => ({ ...prev, deliveryTime: '' }));
+        }
+      };
+
+      fetchIntervals();
     }
-  }, [
-    deliveryInfo.customerName, 
-    deliveryInfo.customerPhone,
-    deliveryInfo.deliveryDate,
-    deliveryInfo.deliveryTime,
-    deliveryInfo.address.street,
-    deliveryInfo.address.number,
-    deliveryInfo.address.neighborhood,
-    deliveryInfo.address.city,
-    touchedFields.customerName,
-    touchedFields.customerPhone,
-    // ... outros campos de entrega relevantes
-  ]);
+  }, [deliveryInfo.deliveryDate, saleType]);
 
   const calcularValorTotal = (updateState = false) => {
     const subtotal = cartItems.reduce((total, item) => {
       return total + (item.product.sale_price * item.quantity);
     }, 0);
-  
+
     // Calcular desconto
-    const discountValue = paymentDetails.discount.type === 'percentage' 
+    const discountValue = paymentDetails.discount.type === 'percentage'
       ? subtotal * (paymentDetails.discount.value / 100)
       : paymentDetails.discount.value;
-      console.log(discountValue);
-  
+    console.log(discountValue);
+
     // Calcular acréscimo
-    const additionValue = paymentDetails.addition.type === 'percentage' 
+    const additionValue = paymentDetails.addition.type === 'percentage'
       ? subtotal * (paymentDetails.addition.value / 100)
       : paymentDetails.addition.value;
-  
+
     // Adicionar taxa de entrega se for delivery
     const deliveryFeeValue = saleType === 'delivery' ? deliveryFee : 0;
-  
+
     if (updateState) {
       setPaymentDetails(prev => ({
         ...prev,
@@ -162,7 +170,7 @@ export default function CheckoutPage() {
         addition_amount: additionValue
       }));
     }
-  
+
     return subtotal + additionValue - discountValue + deliveryFeeValue;
   };
 
@@ -183,13 +191,13 @@ export default function CheckoutPage() {
     } else if (key === 'value') {
       // Garante que o valor é numérico
       const numValue = typeof value === 'number' ? value : parseFloat(value as string) || 0;
-      
+
       // Limita porcentagem a 100% e garante que é positivo
       const adjustedValue = Math.min(
-        Math.max(numValue, 0), 
+        Math.max(numValue, 0),
         paymentDetails[field].type === 'percentage' ? 100 : Number.MAX_SAFE_INTEGER
       );
-      
+
       setPaymentDetails(prev => ({
         ...prev,
         [field]: {
@@ -212,11 +220,11 @@ export default function CheckoutPage() {
       [field === 'discount' ? 'showDiscount' : 'showAddition']: !prev[field === 'discount' ? 'showDiscount' : 'showAddition']
     }));
   };
-  
+
 
   const handleDeliveryInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
+
     if (name.startsWith('address.')) {
       const field = name.split('.')[1];
       setDeliveryInfo(prev => ({
@@ -269,7 +277,7 @@ export default function CheckoutPage() {
   }
 
   const translatePaymentMethod = (method: "cash" | "credit_card" | "debit_card" | "pix" | undefined): string => {
-    switch(method) {
+    switch (method) {
       case 'cash':
         return 'Dinheiro';
       case 'credit_card':
@@ -285,29 +293,29 @@ export default function CheckoutPage() {
 
   const getObservationsDetails = () => {
     let notes = observations.length > 0 ? "\n\n" : '';
-    
+
     notes += `Meio de pagamento: ${translatePaymentMethod(paymentMethod)}\n`;
     notes += `Subtotal: ${getSubTotal()}\n`;
-    
-    if(paymentDetails.discount.value !== 0) {
-      notes += `Desconto (${paymentDetails.discount.type === 'percentage' ? 
-               formatarPorcentagem(paymentDetails.discount.value) + ')' : 
-               'valor fixo)'}: ${formatarMoeda(paymentDetails.discount_amount)}\n`;
+
+    if (paymentDetails.discount.value !== 0) {
+      notes += `Desconto (${paymentDetails.discount.type === 'percentage' ?
+        formatarPorcentagem(paymentDetails.discount.value) + ')' :
+        'valor fixo)'}: ${formatarMoeda(paymentDetails.discount_amount)}\n`;
     }
-  
-    if(paymentDetails.addition.value !== 0) {
-      notes += `Acréscimo (${paymentDetails.addition.type === 'percentage' ? 
-               formatarPorcentagem(paymentDetails.addition.value) + ')' : 
-               'valor fixo)'}: ${formatarMoeda(paymentDetails.addition_amount)}\n`;
+
+    if (paymentDetails.addition.value !== 0) {
+      notes += `Acréscimo (${paymentDetails.addition.type === 'percentage' ?
+        formatarPorcentagem(paymentDetails.addition.value) + ')' :
+        'valor fixo)'}: ${formatarMoeda(paymentDetails.addition_amount)}\n`;
     }
-  
+
     notes += `Total: ${formatarMoeda(calcularValorTotal())}\n`;
-  
-    if(paymentMethod === 'cash') {
+
+    if (paymentMethod === 'cash') {
       notes += `Valor Pago: ${formatarMoeda(paymentDetails.cashAmount)}\n`;
       notes += `Troco: ${formatarMoeda(calcularTroco())}\n`;
     }
-  
+
     return notes;
   };
 
@@ -324,14 +332,14 @@ export default function CheckoutPage() {
         draggable: true,
         progress: undefined,
       });
-      
+
       // Rola a página para o topo para mostrar os erros
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       const { data: sale, error: saleError } = await supabase
         .from('sales')
@@ -341,18 +349,17 @@ export default function CheckoutPage() {
           subtotal: getSubTotalNumeric(),
           total: calcularValorTotal(),
           status: 'PENDING',
-          notes: observations + getObservationsDetails(), 
+          notes: observations + getObservationsDetails(),
           delivery_fee: saleType === 'delivery' ? deliveryFee : 0,
-          discount_amount: paymentDetails.discount_amount, 
-          discount_type: paymentDetails.discount.type,    
-          discount_value: paymentDetails.discount.value,  
+          discount_type: paymentDetails.discount.type,
+          discount_value: paymentDetails.discount.value,
           addition_amount: paymentDetails.addition_amount,
-          addition_type: paymentDetails.addition.type,     
-          addition_value: paymentDetails.addition.value 
-      }])
+          addition_type: paymentDetails.addition.type,
+          addition_value: paymentDetails.addition.value
+        }])
         .select()
         .single();
-  
+
 
       if (saleError) throw saleError;
 
@@ -381,7 +388,7 @@ export default function CheckoutPage() {
             customer_name: deliveryInfo.customerName,
             customer_phone: deliveryInfo.customerPhone,
             delivery_date: `${deliveryInfo.deliveryDate}`,
-            delivery_time: `${deliveryInfo.deliveryTime}`,
+            delivery_time: deliveryInfo.deliveryTime ? `${deliveryInfo.deliveryTime.split(' ')[0]}:00` : null,
             cep: deliveryInfo.address.cep,
             street: deliveryInfo.address.street,
             number: deliveryInfo.address.number,
@@ -401,9 +408,58 @@ export default function CheckoutPage() {
       router.push(`/dashboard/vendas/comprovante/${sale.id}`);
     } catch (error) {
       console.error('Error completing sale:', error);
-      alert('Ocorreu um erro ao finalizar a venda');
-    } finally {
+      toast.error(`Erro ao finalizar venda: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, {
+        position: "top-center",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+    }
+    finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const checkAvailableIntervals = async (date: string) => {
+    if (!date) return generateTimeIntervals();
+
+    try {
+      // Converter a string da data para o formato YYYY-MM-DD
+      const formattedDate = new Date(date).toISOString().split('T')[0];
+
+      const { data: deliveries, error } = await supabase
+        .from('delivery_infos')
+        .select('delivery_time')
+        .eq('delivery_date', formattedDate);
+
+      if (error) throw error;
+
+      const intervalCounts: Record<string, number> = {};
+      const allIntervals = generateTimeIntervals();
+
+      allIntervals.forEach(interval => {
+        intervalCounts[interval] = 0;
+      });
+
+      deliveries?.forEach(delivery => {
+        if (delivery.delivery_time) {
+          const timeStr = delivery.delivery_time;
+          // Extrai a hora do formato time (HH:MM:SS)
+          const hour = parseInt(timeStr.split(':')[0]);
+          if (hour >= 7 && hour < 19) {
+            const interval = `${hour.toString().padStart(2, '0')}:00 às ${(hour + 1).toString().padStart(2, '0')}:00`;
+            intervalCounts[interval] = (intervalCounts[interval] || 0) + 1;
+          }
+        }
+      });
+
+      return allIntervals.filter(interval => intervalCounts[interval] < 2);
+    } catch (error) {
+      console.error('Error checking available intervals:', error);
+      return generateTimeIntervals();
     }
   };
 
@@ -411,29 +467,29 @@ export default function CheckoutPage() {
   const validateForms = (): boolean => {
     const newErrors: Record<string, string> = {};
     let isValid = true;
-  
+
     // Marca todos os campos obrigatórios como tocados
     const newTouchedFields = { ...touchedFields };
-    
+
     // Validação básica para todos os tipos de venda
     if (!paymentMethod) {
       newErrors.paymentMethod = 'Selecione um método de pagamento';
       newTouchedFields.paymentMethod = true;
       isValid = false;
     }
-  
+
     // Validação específica para entregas
     if (saleType === 'delivery') {
       const requiredFields = [
         'customerName', 'customerPhone', 'deliveryDate', 'deliveryTime',
         'address.street', 'address.number', 'address.neighborhood', 'address.city'
       ];
-  
+
       requiredFields.forEach(field => {
-        const fieldValue = field.startsWith('address.') 
+        const fieldValue = field.startsWith('address.')
           ? deliveryInfo.address[field.split('.')[1] as keyof typeof deliveryInfo.address]
           : deliveryInfo[field as keyof typeof deliveryInfo];
-  
+
         if (!fieldValue) {
           const errorKey = field.startsWith('address.') ? field.split('.')[1] : field;
           newErrors[errorKey] = 'Campo obrigatório';
@@ -442,7 +498,7 @@ export default function CheckoutPage() {
         }
       });
     }
-  
+
     setTouchedFields(newTouchedFields);
     setFieldErrors(newErrors);
     return isValid;
@@ -467,7 +523,7 @@ export default function CheckoutPage() {
 
         {/* Resumo da Venda com Toggle */}
         <div className="bg-gray-800 p-4 rounded-lg mb-6">
-          <div 
+          <div
             className="flex justify-between items-center cursor-pointer mb-2"
             onClick={() => setShowItems(!showItems)}
           >
@@ -499,55 +555,55 @@ export default function CheckoutPage() {
           </div>
 
           {showItems && (
-          <div className="mt-4 space-y-3">
-            {cartItems.map((item) => (
-              <div key={item.product.id} className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                {/* Miniatura da imagem */}
-                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-600">
-                  {item.product.image_url ? (
-                    <img 
-                      src={item.product.image_url} 
-                      alt={item.product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                        <polyline points="21 15 16 10 5 21"></polyline>
-                      </svg>
+            <div className="mt-4 space-y-3">
+              {cartItems.map((item) => (
+                <div key={item.product.id} className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
+                  {/* Miniatura da imagem */}
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-600">
+                    {item.product.image_url ? (
+                      <img
+                        src={item.product.image_url}
+                        alt={item.product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                          <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Detalhes do produto */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{item.product.name}</p>
+                    <div className="flex items-center text-sm text-gray-400">
+                      <span>{item.quantity}x</span>
+                      <span>{item.product.sale_price.toFixed(2).toString().replace('.', ',')}</span>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Valor total do item */}
+                  <div className="text-blue-400 font-medium">
+                    {formatarMoeda(item.product.sale_price * item.quantity)}
+                  </div>
                 </div>
-                
-                {/* Detalhes do produto */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{item.product.name}</p>
-                  <div className="flex items-center text-sm text-gray-400">
-                    <span>{item.quantity}x</span>
-                    <span>{item.product.sale_price.toFixed(2).toString().replace('.', ',')}</span>
-                  </div>  
-                </div>
-                
-                {/* Valor total do item */}
-                <div className="text-blue-400 font-medium">
-                  {formatarMoeda(item.product.sale_price * item.quantity)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="mb-8">
@@ -570,38 +626,37 @@ export default function CheckoutPage() {
 
         {saleType === 'delivery' && (
           <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-4">Informações de Entrega</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1 required-field">Nome do Cliente</label>
-              <input
-                type="text"
-                name="customerName"
-                value={deliveryInfo.customerName}
-                onChange={handleDeliveryInfoChange}
-                onBlur={() => handleFieldBlur('customerName')}
-                className={`w-full p-3 rounded border ${
-                  fieldErrors.customerName && touchedFields.customerName 
-                    ? 'border-red-500' 
+            <h2 className="text-lg font-semibold mb-4">Informações de Entrega</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1 required-field">Nome do Cliente</label>
+                <input
+                  type="text"
+                  name="customerName"
+                  value={deliveryInfo.customerName}
+                  onChange={handleDeliveryInfoChange}
+                  onBlur={() => handleFieldBlur('customerName')}
+                  className={`w-full p-3 rounded border ${fieldErrors.customerName && touchedFields.customerName
+                    ? 'border-red-500'
                     : 'border-gray-600 focus:border-blue-500'
-                } bg-gray-800 text-white`}
-                required
-              />
-              {fieldErrors.customerName && touchedFields.customerName && (
-                <p className="mt-1 text-sm text-red-500">{fieldErrors.customerName}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1 required-field">Telefone</label>
-              <IMaskInput
-                mask="(00) 00000-0000"
-                name="customerPhone"
-                value={deliveryInfo.customerPhone}
-                onAccept={(value) => setDeliveryInfo({...deliveryInfo, customerPhone: value})}
-                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                required
-              />
-            </div>
+                    } bg-gray-800 text-white`}
+                  required
+                />
+                {fieldErrors.customerName && touchedFields.customerName && (
+                  <p className="mt-1 text-sm text-red-500">{fieldErrors.customerName}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1 required-field">Telefone</label>
+                <IMaskInput
+                  mask="(00) 00000-0000"
+                  name="customerPhone"
+                  value={deliveryInfo.customerPhone}
+                  onAccept={(value) => setDeliveryInfo({ ...deliveryInfo, customerPhone: value })}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  required
+                />
+              </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-1 required-field">De</label>
                 <input
@@ -626,181 +681,200 @@ export default function CheckoutPage() {
                   required
                 />
               </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1 required-field">Data</label>
-                <input
-                  type="date"
-                  name="deliveryDate"
-                  value={deliveryInfo.deliveryDate}
-                  onChange={handleDeliveryInfoChange}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1 required-field">Data</label>
+                  <input
+                    type="date"
+                    name="deliveryDate"
+                    value={deliveryInfo.deliveryDate}
+                    onChange={handleDeliveryInfoChange}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1 required-field">Hora</label>
+                  <select
+                    name="deliveryTime"
+                    value={
+                      deliveryInfo.deliveryTime
+                        ? `${deliveryInfo.deliveryTime} às ${parseInt(deliveryInfo.deliveryTime.split(':')[0]) + 1}:00`
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const interval = e.target.value;
+                      // Extrai apenas a hora inicial (07:00) do intervalo selecionado
+                      const startTime = interval.split(' ')[0];
+                      setDeliveryInfo(prev => ({ ...prev, deliveryTime: startTime }));
+                    }}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    required
+                    disabled={!deliveryInfo.deliveryDate || availableIntervals.length === 0}
+                  >
+                    <option value="">Selecione um horário</option>
+                    {availableIntervals.map((interval) => (
+                      <option key={interval} value={interval}>
+                        {interval}
+                      </option>
+                    ))}
+                    {availableIntervals.length === 0 && (
+                      <option value="" disabled>
+                        Nenhum horário disponível para esta data
+                      </option>
+                    )}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1 required-field">Hora</label>
-                <input
-                  type="time"
-                  name="deliveryTime"
-                  value={deliveryInfo.deliveryTime}
-                  onChange={handleDeliveryInfoChange}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  min="06:00"
-                  max="19:00"
-                  required
-                />
-              </div>
-            </div>
-            
-            {/* Campos de endereço */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">CEP</label>
-                <IMaskInput
-                  mask="00000-000"
-                  name="address.cep"
-                  value={deliveryInfo.address.cep}
-                  onAccept={(value) => {
-                    setDeliveryInfo(prev => ({
-                      ...prev,
-                      address: {
-                        ...prev.address,
-                        cep: value
-                      }
-                    }));
-                  }}
-                  onBlur={handleCepBlur}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  disabled={isFetchingCep}
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1 required-field">Número</label>
-                <input
-                  type="text"
-                  name="address.number"
-                  value={deliveryInfo.address.number}
-                  onChange={handleDeliveryInfoChange}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  required
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm text-gray-400 mb-1 required-field">Logradouro</label>
-              <input
-                type="text"
-                name="address.street"
-                value={deliveryInfo.address.street}
-                onChange={handleDeliveryInfoChange}
-                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                required
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1 required-field">Bairro</label>
-                <input
-                  type="text"
-                  name="address.neighborhood"
-                  value={deliveryInfo.address.neighborhood}
-                  onChange={handleDeliveryInfoChange}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1 required-field">Cidade</label>
-                <input
-                  type="text"
-                  name="address.city"
-                  value={deliveryInfo.address.city}
-                  onChange={handleDeliveryInfoChange}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  required
-                />
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Taxa de Entrega</label>
-              <CurrencyInput
-                value={deliveryFee}
-                onChange={(value) => setDeliveryFee(Math.max(0, value))} // Garante que não seja negativo
-                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Complemento (Opcional)</label>
-              <input
-                type="text"
-                name="address.complement"
-                value={deliveryInfo.address.complement}
-                onChange={handleDeliveryInfoChange}
-                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Informações Adicionais</label>
-              <textarea
-                name="additionalInfo"
-                value={deliveryInfo.additionalInfo}
-                onChange={handleDeliveryInfoChange}
-                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                rows={3}
-              />
+              {/* Campos de endereço */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">CEP</label>
+                  <IMaskInput
+                    mask="00000-000"
+                    name="address.cep"
+                    value={deliveryInfo.address.cep}
+                    onAccept={(value) => {
+                      setDeliveryInfo(prev => ({
+                        ...prev,
+                        address: {
+                          ...prev.address,
+                          cep: value
+                        }
+                      }));
+                    }}
+                    onBlur={handleCepBlur}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    disabled={isFetchingCep}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1 required-field">Número</label>
+                  <input
+                    type="text"
+                    name="address.number"
+                    value={deliveryInfo.address.number}
+                    onChange={handleDeliveryInfoChange}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1 required-field">Logradouro</label>
+                <input
+                  type="text"
+                  name="address.street"
+                  value={deliveryInfo.address.street}
+                  onChange={handleDeliveryInfoChange}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1 required-field">Bairro</label>
+                  <input
+                    type="text"
+                    name="address.neighborhood"
+                    value={deliveryInfo.address.neighborhood}
+                    onChange={handleDeliveryInfoChange}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1 required-field">Cidade</label>
+                  <input
+                    type="text"
+                    name="address.city"
+                    value={deliveryInfo.address.city}
+                    onChange={handleDeliveryInfoChange}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Taxa de Entrega</label>
+                <CurrencyInput
+                  value={deliveryFee}
+                  onChange={(value) => setDeliveryFee(Math.max(0, value))} // Garante que não seja negativo
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Complemento (Opcional)</label>
+                <input
+                  type="text"
+                  name="address.complement"
+                  value={deliveryInfo.address.complement}
+                  onChange={handleDeliveryInfoChange}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Informações Adicionais</label>
+                <textarea
+                  name="additionalInfo"
+                  value={deliveryInfo.additionalInfo}
+                  onChange={handleDeliveryInfoChange}
+                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                  rows={3}
+                />
+              </div>
             </div>
           </div>
-        </div>
         )}
 
         <div className="mb-8">
-              <h2 className="text-lg font-semibold mb-4 required-field">Método de Pagamento</h2>
-              {fieldErrors.paymentMethod && (
-                <p className="mb-2 text-sm text-red-500">{fieldErrors.paymentMethod}</p>
-              )}
-              {/* Botões de Desconto e Acréscimo */}
-            <div className="grid grid-cols-2 gap-4 mb-4 mt-4">
-              <button
-                onClick={() => toggleAdjustment('discount')}
-                className={`p-4 rounded-lg border flex items-center justify-center ${paymentDetails.showDiscount ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600'}`}
+          <h2 className="text-lg font-semibold mb-4 required-field">Método de Pagamento</h2>
+          {fieldErrors.paymentMethod && (
+            <p className="mb-2 text-sm text-red-500">{fieldErrors.paymentMethod}</p>
+          )}
+          {/* Botões de Desconto e Acréscimo */}
+          <div className="grid grid-cols-2 gap-4 mb-4 mt-4">
+            <button
+              onClick={() => toggleAdjustment('discount')}
+              className={`p-4 rounded-lg border flex items-center justify-center ${paymentDetails.showDiscount ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600'}`}
+            >
+              <span>Desconto</span>
+              <svg
+                className={`w-5 h-5 ml-2 transform transition-transform ${paymentDetails.showDiscount ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                <span>Desconto</span>
-                <svg
-                  className={`w-5 h-5 ml-2 transform transition-transform ${paymentDetails.showDiscount ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
 
-              <button
-                onClick={() => toggleAdjustment('addition')}
-                className={`p-4 rounded-lg border flex items-center justify-center ${paymentDetails.showAddition ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600'}`}
+            <button
+              onClick={() => toggleAdjustment('addition')}
+              className={`p-4 rounded-lg border flex items-center justify-center ${paymentDetails.showAddition ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600'}`}
+            >
+              <span>Acréscimo</span>
+              <svg
+                className={`w-5 h-5 ml-2 transform transition-transform ${paymentDetails.showAddition ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                <span>Acréscimo</span>
-                <svg
-                  className={`w-5 h-5 ml-2 transform transition-transform ${paymentDetails.showAddition ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </div>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
 
-            {/* Inputs de Desconto */}
-            {paymentDetails.showDiscount && (
+          {/* Inputs de Desconto */}
+          {paymentDetails.showDiscount && (
             <div className="bg-gray-800 p-4 rounded-lg mb-4">
               <div className="grid grid-cols-2 gap-4 mb-3">
                 <div>
@@ -819,27 +893,27 @@ export default function CheckoutPage() {
                     {paymentDetails.discount.type === 'percentage' ? 'Porcentagem (%)' : 'Valor (R$)'}
                   </label>
                   {paymentDetails.discount.type === 'percentage' ? (
-                  <PercentageInput
-                    value={paymentDetails.discount.value}
-                    onChange={(value) => handleAdjustmentChange('discount', 'value', value)}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                    max={100}
-                    decimalPlaces={2}
-                  />
-                ) : (
-                  <CurrencyInput
-                    value={paymentDetails.discount.value}
-                    onChange={(value) => handleAdjustmentChange('discount', 'value', value)}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  />
-                )}
+                    <PercentageInput
+                      value={paymentDetails.discount.value}
+                      onChange={(value) => handleAdjustmentChange('discount', 'value', value)}
+                      className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                      max={100}
+                      decimalPlaces={2}
+                    />
+                  ) : (
+                    <CurrencyInput
+                      value={paymentDetails.discount.value}
+                      onChange={(value) => handleAdjustmentChange('discount', 'value', value)}
+                      className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    />
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-            {/* Inputs de Acréscimo */}
-            {paymentDetails.showAddition && (
+          {/* Inputs de Acréscimo */}
+          {paymentDetails.showAddition && (
             <div className="bg-gray-800 p-4 rounded-lg mb-4">
               <div className="grid grid-cols-2 gap-4 mb-3">
                 <div>
@@ -858,61 +932,61 @@ export default function CheckoutPage() {
                     {paymentDetails.addition.type === 'percentage' ? 'Porcentagem (%)' : 'Valor (R$)'}
                   </label>
                   {paymentDetails.addition.type === 'percentage' ? (
-                  <PercentageInput
-                    value={paymentDetails.addition.value}
-                    onChange={(value) => handleAdjustmentChange('addition', 'value', value)}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                    max={100}
-                    decimalPlaces={2}
-                  />
-                ) : (
-                  <CurrencyInput
-                    value={paymentDetails.addition.value}
-                    onChange={(value) => handleAdjustmentChange('addition', 'value', value)}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                  />
-                )}
+                    <PercentageInput
+                      value={paymentDetails.addition.value}
+                      onChange={(value) => handleAdjustmentChange('addition', 'value', value)}
+                      className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                      max={100}
+                      decimalPlaces={2}
+                    />
+                  ) : (
+                    <CurrencyInput
+                      value={paymentDetails.addition.value}
+                      onChange={(value) => handleAdjustmentChange('addition', 'value', value)}
+                      className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    />
+                  )}
                 </div>
               </div>
             </div>
           )}
-              <div className="grid grid-cols-2 gap-4">          
-              {['cash', 'credit_card', 'debit_card', 'pix'].map((method) => (
-                <button
-                  key={method}
-                  onClick={() => {
-                    if(method === 'cash') {
-                      openCashModal();
-                    }
-                    setPaymentMethod(method as 'cash' | 'credit_card' | 'debit_card' | 'pix');
-                    
-                    handleFieldBlur('paymentMethod'); // Marca o campo como tocado
-                    validateForms();
-                  }}
-                  className={`p-4 rounded-lg border ${paymentMethod === method ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600'}`}
-                >
-                  {method === 'cash' && 'Dinheiro'}
-                  {method === 'credit_card' && 'Cartão de Crédito'}
-                  {method === 'debit_card' && 'Cartão de Débito'}
-                  {method === 'pix' && 'PIX'}
-                </button>
-              ))}
-            </div>
+          <div className="grid grid-cols-2 gap-4">
+            {['cash', 'credit_card', 'debit_card', 'pix'].map((method) => (
+              <button
+                key={method}
+                onClick={() => {
+                  if (method === 'cash') {
+                    openCashModal();
+                  }
+                  setPaymentMethod(method as 'cash' | 'credit_card' | 'debit_card' | 'pix');
 
-            {/* Observações*/}
-            <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-1">Observações (Opcional)</label>
-              <textarea
-                value={observations}
-                onChange={(e) => setObservations(e.target.value)}
-                className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
-                rows={3}
-                placeholder="Alguma observação importante sobre a venda..."
-              />
-            </div>
+                  handleFieldBlur('paymentMethod'); // Marca o campo como tocado
+                  validateForms();
+                }}
+                className={`p-4 rounded-lg border ${paymentMethod === method ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600'}`}
+              >
+                {method === 'cash' && 'Dinheiro'}
+                {method === 'credit_card' && 'Cartão de Crédito'}
+                {method === 'debit_card' && 'Cartão de Débito'}
+                {method === 'pix' && 'PIX'}
+              </button>
+            ))}
+          </div>
 
-            {/* Resumo do Valor */}
-            <div className="bg-gray-800 p-4 rounded-lg">
+          {/* Observações*/}
+          <div className="mb-4">
+            <label className="block text-sm text-gray-400 mb-1">Observações (Opcional)</label>
+            <textarea
+              value={observations}
+              onChange={(e) => setObservations(e.target.value)}
+              className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+              rows={3}
+              placeholder="Alguma observação importante sobre a venda..."
+            />
+          </div>
+
+          {/* Resumo do Valor */}
+          <div className="bg-gray-800 p-4 rounded-lg">
             <div className="flex justify-between items-center mb-2">
               <span className="text-gray-400">Subtotal:</span>
               <span>{formatarMoeda(cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0))}</span>
@@ -926,28 +1000,28 @@ export default function CheckoutPage() {
             )}
 
             {paymentDetails.discount.value > 0 && (
-            <div className="flex justify-between items-center mb-2 text-red-400">
-              <span>Desconto:</span>
-              <span>-{formatarMoeda(
-                paymentDetails.discount.type === 'percentage' 
-                  ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.discount.value / 100))
-                  : paymentDetails.discount.value
-              )}</span>
-            </div>
+              <div className="flex justify-between items-center mb-2 text-red-400">
+                <span>Desconto:</span>
+                <span>-{formatarMoeda(
+                  paymentDetails.discount.type === 'percentage'
+                    ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.discount.value / 100))
+                    : paymentDetails.discount.value
+                )}</span>
+              </div>
             )}
 
-          {paymentDetails.addition.value > 0 && (
-            <div className="flex justify-between items-center mb-2 text-green-400">
-              <span>Acréscimo:</span>
-              <span>+{formatarMoeda(
-                paymentDetails.addition.type === 'percentage' 
-                  ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.addition.value / 100))
-                  : paymentDetails.addition.value
-              )}</span>
-            </div>
-          )}
+            {paymentDetails.addition.value > 0 && (
+              <div className="flex justify-between items-center mb-2 text-green-400">
+                <span>Acréscimo:</span>
+                <span>+{formatarMoeda(
+                  paymentDetails.addition.type === 'percentage'
+                    ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.addition.value / 100))
+                    : paymentDetails.addition.value
+                )}</span>
+              </div>
+            )}
 
-          <div className="flex justify-between items-center pt-2 border-t border-gray-700">
+            <div className="flex justify-between items-center pt-2 border-t border-gray-700">
               <span className="font-semibold">Total:</span>
               <span className="font-bold text-xl text-green-400">{formatarMoeda(calcularValorTotal())}</span>
             </div>
@@ -955,70 +1029,70 @@ export default function CheckoutPage() {
 
           {/* Valor em Dinheiro e Troco */}
           {paymentMethod === 'cash' && (
-                <div className="bg-gray-800 p-4 rounded-lg mb-4 mt-4">
-                <div className="grid grid-cols-2 gap-4 mb-3">
+            <div className="bg-gray-800 p-4 rounded-lg mb-4 mt-4">
+              <div className="grid grid-cols-2 gap-4 mb-3">
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Valor Recebido</label>
                   <CurrencyInput
-                  value={paymentDetails.cashAmount}
-                  onChange={(value) => setPaymentDetails(prev => ({ ...prev, cashAmount: value }))}
-                  className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    value={paymentDetails.cashAmount}
+                    onChange={(value) => setPaymentDetails(prev => ({ ...prev, cashAmount: value }))}
+                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
                   />
                 </div>
-                  <div>
+                <div>
                   <label className="block text-sm text-gray-400 mb-1">Troco (R$)</label>
                   <div className="w-full p-3 rounded border border-gray-600 bg-gray-700 text-white">
                     {formatarMoeda(calcularTroco())}
                   </div>
-                  </div>
                 </div>
-                </div>
-            )}
-      
-          </div>
+              </div>
+            </div>
+          )}
+
+        </div>
 
         {/* Botão de Voltar */}
         <button
           onClick={() => router.push(`/dashboard/vendas?cart=${encodeURIComponent(JSON.stringify(cartItems))}`)}
           className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
         >
-            <svg
+          <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-            >
+          >
             <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
-            </svg>
+          </svg>
         </button>
 
         {/* Botão avançar */}
         <button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className={`fixed bottom-6 right-6 ${isSubmitting ? 'bg-gray-600' : 'bg-green-600 hover:bg-green-700'} text-white p-4 rounded-full shadow-lg`}
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className={`fixed bottom-6 right-6 ${isSubmitting ? 'bg-gray-600' : 'bg-green-600 hover:bg-green-700'} text-white p-4 rounded-full shadow-lg`}
         >
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-            >
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                />
-            </svg>
-        </button>        
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M14 5l7 7m0 0l-7 7m7-7H3"
+            />
+          </svg>
+        </button>
       </div>
       <ToastContainer
         position="top-center"
@@ -1060,45 +1134,45 @@ export default function CheckoutPage() {
                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-800 p-6 text-left align-middle shadow-xl transition-all">
                   {/* Resumo do Valor */}
                   <div className="bg-gray-800 p-4 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-400">Subtotal:</span>
-                    <span>{formatarMoeda(cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0))}</span>
-                  </div>
-
-                  {saleType === 'delivery' && (
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-gray-400">Taxa de Entrega:</span>
-                      <span>+{formatarMoeda(deliveryFee)}</span>
+                      <span className="text-gray-400">Subtotal:</span>
+                      <span>{formatarMoeda(cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0))}</span>
                     </div>
-                  )}
 
-                  {paymentDetails.discount.value > 0 && (
-                  <div className="flex justify-between items-center mb-2 text-red-400">
-                    <span>Desconto:</span>
-                    <span>-{formatarMoeda(
-                      paymentDetails.discount.type === 'percentage' 
-                        ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.discount.value / 100))
-                        : paymentDetails.discount.value
-                    )}</span>
-                  </div>
-                  )}
+                    {saleType === 'delivery' && (
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-gray-400">Taxa de Entrega:</span>
+                        <span>+{formatarMoeda(deliveryFee)}</span>
+                      </div>
+                    )}
 
-                {paymentDetails.addition.value > 0 && (
-                  <div className="flex justify-between items-center mb-2 text-green-400">
-                    <span>Acréscimo:</span>
-                    <span>+{formatarMoeda(
-                      paymentDetails.addition.type === 'percentage' 
-                        ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.addition.value / 100))
-                        : paymentDetails.addition.value
-                    )}</span>
-                  </div>
-                )}
+                    {paymentDetails.discount.value > 0 && (
+                      <div className="flex justify-between items-center mb-2 text-red-400">
+                        <span>Desconto:</span>
+                        <span>-{formatarMoeda(
+                          paymentDetails.discount.type === 'percentage'
+                            ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.discount.value / 100))
+                            : paymentDetails.discount.value
+                        )}</span>
+                      </div>
+                    )}
 
-                <div className="flex justify-between items-center pt-2 border-t border-gray-700">
-                    <span className="font-semibold">Total:</span>
-                    <span className="font-bold text-xl text-green-400">{formatarMoeda(calcularValorTotal())}</span>
+                    {paymentDetails.addition.value > 0 && (
+                      <div className="flex justify-between items-center mb-2 text-green-400">
+                        <span>Acréscimo:</span>
+                        <span>+{formatarMoeda(
+                          paymentDetails.addition.type === 'percentage'
+                            ? (cartItems.reduce((total, item) => total + (item.product.sale_price * item.quantity), 0) * (paymentDetails.addition.value / 100))
+                            : paymentDetails.addition.value
+                        )}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-700">
+                      <span className="font-semibold">Total:</span>
+                      <span className="font-bold text-xl text-green-400">{formatarMoeda(calcularValorTotal())}</span>
+                    </div>
                   </div>
-                </div>
                   <Dialog.Title
                     as="h3"
                     className="text-lg font-medium leading-6 text-white"

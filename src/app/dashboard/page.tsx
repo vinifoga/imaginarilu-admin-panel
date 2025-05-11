@@ -11,7 +11,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [activeButton, setActiveButton] = useState<string | null>(null);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
-  
+
   // Função reutilizável para navegação
   const handleNavigation = (path: string) => {
     setActiveButton(path);
@@ -91,6 +91,11 @@ export default function DashboardPage() {
       label: 'Pedidos Pendentes',
       badge: pendingOrdersCount > 0 ? pendingOrdersCount : null
     },
+    {
+      path: '/dashboard/vendas/horarios',
+      icon: <FiClock className="text-lg" />,
+      label: 'Horários de Entrega'
+    }
   ];
 
   return (
@@ -103,9 +108,8 @@ export default function DashboardPage() {
               key={button.path}
               onClick={() => handleNavigation(button.path)}
               disabled={activeButton === button.path}
-              className={`w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2 disabled:opacity-80 disabled:cursor-wait transition-all relative ${
-                button.badge ? 'pr-8' : ''
-              }`}
+              className={`w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2 disabled:opacity-80 disabled:cursor-wait transition-all relative ${button.badge ? 'pr-8' : ''
+                }`}
             >
               {activeButton === button.path ? (
                 <ClipLoader color="#ffffff" size={20} />
@@ -122,7 +126,7 @@ export default function DashboardPage() {
               )}
             </button>
           ))}
-          
+
           {/* Botão de Logout (separado por ser diferente) */}
           <button
             onClick={handleLogout}
@@ -133,7 +137,7 @@ export default function DashboardPage() {
               <ClipLoader color="#ffffff" size={20} />
             ) : (
               <FiLogOut className="text-lg" />
-            )}                    
+            )}
           </button>
         </div>
       </div>
