@@ -10,6 +10,7 @@ import PlaceholderImage from '../../../../components/PlaceholderImage';
 import { useLoading } from '@/contexts/loading-context';
 import ConfirmationModal from '../../../../components/ConfirmationModal';
 import { toast, ToastContainer } from 'react-toastify';
+import Image from 'next/image';
 interface Produto {
   id: string;
   name: string;
@@ -21,6 +22,9 @@ interface Produto {
   image_url?: string; // Adicionando URL da imagem como opcional
   categorias?: Categoria[]; // Adicionando categorias como opcional
   active?: boolean;
+  sell_online?: boolean;
+  sell_shopee?: boolean;
+  sell_mercado_livre?: boolean;
 }
 
 interface Categoria {
@@ -43,7 +47,7 @@ export default function ProdutosPage() {
   const [produtoToInactivate, setProdutoToInactivate] = useState<string | null>(null);
   const [modalMessage, setModalMessage] = useState('');
 
-  
+
 
   // Busca os produtos e categorias do Supabase (só no cliente)
   useEffect(() => {
@@ -73,21 +77,21 @@ export default function ProdutosPage() {
               .select('image_url')
               .eq('product_id', produto.id)
               .limit(1);
-  
+
             if (imagensError) {
               console.error('Erro ao buscar imagens:', imagensError);
             }
-  
+
             // Busca as categorias
             const { data: categoriasData, error: categoriasError } = await supabase
               .from('product_categories')
               .select('categories(id, name)')
               .eq('product_id', produto.id);
-  
+
             if (categoriasError) {
               console.error('Erro ao buscar categorias:', categoriasError);
             }
-  
+
             // Adiciona a URL da primeira imagem e as categorias ao produto
             return {
               ...produto,
@@ -96,19 +100,19 @@ export default function ProdutosPage() {
             };
           })
         );
-  
+
         console.log('Produtos encontrados:', produtosComImagensECategorias);
         setProdutos(produtosComImagensECategorias);
         setLoading(false);
       }
     };
-  
+
     const fetchCategorias = async () => {
       console.log('Buscando categorias...');
       const { data, error } = await supabase
         .from('categories')
         .select('*');
-  
+
       if (error) {
         console.error('Erro ao buscar categorias:', error);
       } else {
@@ -116,7 +120,7 @@ export default function ProdutosPage() {
         setCategorias(data || []);
       }
     };
-  
+
     fetchProdutos();
     fetchCategorias();
   }, [mostrarInativos]);
@@ -127,25 +131,25 @@ export default function ProdutosPage() {
       scannerModalRef.current?.stopScanner();
     };
   }, []);
-  
-  
+
+
 
   // Filtra os produtos pelas categorias selecionadas
-const produtosFiltradosPorCategoria = filtroCategorias.length > 0
-? produtos.filter((produto) =>
-    produto.categorias?.some((categoria) => filtroCategorias.includes(categoria.id))
-  )
-: produtos;
+  const produtosFiltradosPorCategoria = filtroCategorias.length > 0
+    ? produtos.filter((produto) =>
+      produto.categorias?.some((categoria) => filtroCategorias.includes(categoria.id))
+    )
+    : produtos;
 
-// Filtra os produtos pelo termo de pesquisa (nome, descrição, SKU ou código de barras)
-const produtosFiltrados = termoPesquisa
-? produtosFiltradosPorCategoria.filter((produto) =>
-    produto.name.toLowerCase().includes(termoPesquisa.toLowerCase()) || // Pesquisa por nome
-    produto.description.toLowerCase().includes(termoPesquisa.toLowerCase()) || // Pesquisa por descrição
-    produto.sku?.toLowerCase().includes(termoPesquisa.toLowerCase()) || // Pesquisa por SKU
-    produto.barcode?.toLowerCase().includes(termoPesquisa.toLowerCase()) // Pesquisa por código de barras
-  )
-: produtosFiltradosPorCategoria;
+  // Filtra os produtos pelo termo de pesquisa (nome, descrição, SKU ou código de barras)
+  const produtosFiltrados = termoPesquisa
+    ? produtosFiltradosPorCategoria.filter((produto) =>
+      produto.name.toLowerCase().includes(termoPesquisa.toLowerCase()) || // Pesquisa por nome
+      produto.description.toLowerCase().includes(termoPesquisa.toLowerCase()) || // Pesquisa por descrição
+      produto.sku?.toLowerCase().includes(termoPesquisa.toLowerCase()) || // Pesquisa por SKU
+      produto.barcode?.toLowerCase().includes(termoPesquisa.toLowerCase()) // Pesquisa por código de barras
+    )
+    : produtosFiltradosPorCategoria;
 
   // Adiciona ou remove uma categoria do filtro
   const toggleCategoriaFiltro = (categoriaId: string) => {
@@ -169,7 +173,7 @@ const produtosFiltrados = termoPesquisa
     setTermoPesquisa(result);
     setMostrarScanner(false);
   };
-  
+
 
   const handleScannerError = (error: string) => {
     console.error('Erro no scanner:', error);
@@ -209,7 +213,7 @@ const produtosFiltrados = termoPesquisa
         .update({ active: false })
         .eq('id', produtoToInactivate);
 
-      if (error){
+      if (error) {
         toast.error('Erro ao atualizar status do produto: ' + error.message);
         throw error;
       } else {
@@ -229,7 +233,7 @@ const produtosFiltrados = termoPesquisa
 
       {/* Container para o botão de filtro e o input de pesquisa */}
       <div className="flex flex-col justify-center items-center mb-6 space-y-4">
-        
+
         {/* Input de pesquisa com ícone de leitor de código de barras */}
         <div className="relative">
           <input
@@ -259,7 +263,7 @@ const produtosFiltrados = termoPesquisa
             </svg>
           </button>
         </div>
-        
+
         {/* Botão de Filtro */}
         <div className="relative">
           <button
@@ -269,10 +273,10 @@ const produtosFiltrados = termoPesquisa
             Filtrar por Categoria
           </button>
           {/* Adicione este botão junto com os outros controles de filtro */}
-            <button
+          <button
             onClick={() => setMostrarInativos(!mostrarInativos)}
             className={`px-4 py-2 rounded-lg ${mostrarInativos ? 'bg-red-600' : 'bg-gray-600'} text-white hover:bg-opacity-80 mr-2`}
-            >
+          >
             {mostrarInativos ? 'Mostrar Ativos' : 'Mostrar Inativos'}
           </button>
 
@@ -307,7 +311,7 @@ const produtosFiltrados = termoPesquisa
             className="bg-white p-4 rounded-lg shadow-md cursor-pointer hover:bg-gray-50 flex items-center"
             onClick={() => router.push(`/dashboard/produtos/editar/${produto.id}`)}
           >
-             {!produto.active && (
+            {!produto.active && (
               <span className="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded">
                 Inativo
               </span>
@@ -343,34 +347,68 @@ const produtosFiltrados = termoPesquisa
                   </span>
                 ))}
               </div>
+              {/* Badges de Plataformas */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {produto.sell_online && (
+                  <span className=" text-yellow-800 text-sm font-medium px-2 py-1 rounded flex items-center gap-1">
+                    <Image
+                      src="/icons/online.svg"
+                      alt="Online"
+                      width={35}
+                      height={35}
+                    />
+                  </span>
+                )}
+                {produto.sell_shopee && (
+                  <span className="text-orange-800 text-sm font-medium px-2 py-1 rounded flex items-center gap-1">
+                    <Image
+                      src="/icons/shopee.svg"
+                      alt="Online"
+                      width={35}
+                      height={35}
+                    />
+                  </span>
+                )}
+                {produto.sell_mercado_livre && (
+                  <span className="text-yellow-800 text-sm font-medium px-2 py-1 rounded flex items-center gap-1">
+                    <Image
+                      src="/icons/mercadolivre.svg"
+                      alt="Online"
+                      width={35}
+                      height={35}
+                    />
+                  </span>
+                )}
+              </div>
+
             </div>
 
             {/* Ícone de Lixeira (lado direito) */}
             <button
-            onClick={(e) => {
-              e.stopPropagation();
-              openInactivationModal(produto.id, produto.active || false);
-            }}
-            className="text-red-500 hover:text-red-700 ml-4"
-            title={produto.active ? 'Inativar Produto' : 'Produto Inativo'}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+              onClick={(e) => {
+                e.stopPropagation();
+                openInactivationModal(produto.id, produto.active || false);
+              }}
+              className="text-red-500 hover:text-red-700 ml-4"
+              title={produto.active ? 'Inativar Produto' : 'Produto Inativo'}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
           </div>
-          
+
         ))}
       </div>
       <div className="mb-20"></div>

@@ -119,8 +119,9 @@ export default function EditarProdutoPage() {
         setValorCompra(formatarMoeda(produto.cost_price));
         setValorVenda(formatarMoeda(produto.sale_price));
       }
-      setSellShopee(produto.sell_shopee || false);
-      setSellMercadoLivre(produto.sell_mercado_livre || false);
+      setSellShopee(produto.sell_shopee ?? false);  // Usando nullish coalescing
+      setSellMercadoLivre(produto.sell_mercado_livre ?? false);
+      setSellOnline(produto.sell_online ?? false);
       setValorVendaShopee(formatarMoeda(produto.sale_price_shopee));
       setValorVendaMercadoLivre(formatarMoeda(produto.sale_price_mercado_livre));
       setPorcentagemLucro(formatarPorcentagem(produto.default_profit_margin));
@@ -128,7 +129,6 @@ export default function EditarProdutoPage() {
       setPorcentagemLucroShopee(formatarPorcentagem(produto.profit_margin_shopee));
       setPorcentagemLucroMercadoLivre(formatarPorcentagem(produto.profit_margin_mercado_livre));
       setManagesStock(produto.manages_stock || false);
-      setSellOnline(produto.sell_online || false);
       setQuantity(produto.quantity || 0);
       setComposition(produto.is_composition || false);
       setValorVendaLojaVirtual(formatarMoeda(produto.sale_price_virtual_store));
@@ -1214,7 +1214,15 @@ export default function EditarProdutoPage() {
             <input
               type="checkbox"
               checked={sellOnline}
-              onChange={(e) => setSellOnline(e.target.checked)}
+              onChange={(e) => {
+                setSellOnline(e.target.checked);
+                // Chama o cálculo quando marcado
+                if (e.target.checked && abaAtiva === 'simples') {
+                  calcularValorVenda(valorCompra, porcentagemLucroLojaVirtual, 'lojaVirtual');
+                } else if (e.target.checked && abaAtiva === 'composto') {
+                  calcularValorVendaComposto(porcentagemLucroLojaVirtual, 'lojaVirtual');
+                }
+              }}
               className="mr-2"
             />
             <label className="text-sm font-medium text-gray-300">Loja Virtual</label>
@@ -1227,7 +1235,14 @@ export default function EditarProdutoPage() {
             <input
               type="checkbox"
               checked={sellShopee}
-              onChange={(e) => setSellShopee(e.target.checked)}
+              onChange={(e) => {
+                setSellShopee(e.target.checked);
+                if (e.target.checked && abaAtiva === 'simples') {
+                  calcularValorVenda(valorCompra, porcentagemLucroShopee, 'shopee');
+                } else if (e.target.checked && abaAtiva === 'composto') {
+                  calcularValorVendaComposto(porcentagemLucroShopee, 'shopee');
+                }
+              }}
               className="mr-2"
             />
             <label className="text-sm font-medium text-gray-300">Shopee</label>
@@ -1238,7 +1253,14 @@ export default function EditarProdutoPage() {
             <input
               type="checkbox"
               checked={sellMercadoLivre}
-              onChange={(e) => setSellMercadoLivre(e.target.checked)}
+              onChange={(e) => {
+                setSellMercadoLivre(e.target.checked);
+                if (e.target.checked && abaAtiva === 'simples') {
+                  calcularValorVenda(valorCompra, porcentagemLucroMercadoLivre, 'mercadoLivre');
+                } else if (e.target.checked && abaAtiva === 'composto') {
+                  calcularValorVendaComposto(porcentagemLucroMercadoLivre, 'mercadoLivre');
+                }
+              }}
               className="mr-2"
             />
             <label className="text-sm font-medium text-gray-300">Mercado Livre</label>
