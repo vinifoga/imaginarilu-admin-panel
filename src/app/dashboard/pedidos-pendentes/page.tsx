@@ -45,37 +45,34 @@ export default function PendingOrdersPage() {
     const fetchPendingOrders = async () => {
       setLoading(true);
       try {
-        // Busca os pedidos pendentes
         const { data: ordersData, error: ordersError } = await supabase
           .from('sales')
           .select('*')
           .eq('status', 'PENDING')
           .order('created_at', { ascending: true });
-    
+
         if (ordersError) {
           console.error('Orders error:', ordersError);
           throw ordersError;
         }
-    
+
         if (!ordersData || ordersData.length === 0) {
           setOrders([]);
           return;
         }
-    
-        // Para cada pedido, busca informações adicionais
+
         const ordersWithItems = await Promise.all(
           ordersData.map(async (order) => {
-            // Busca os itens da venda
             const { data: itemsData, error: itemsError } = await supabase
               .from('sale_items')
               .select('*')
               .eq('sale_id', order.id);
-    
+
             if (itemsError) {
               console.error(`Items error for order ${order.id}:`, itemsError);
               return { ...order, items: [] };
             }
-    
+
             // Busca informações de entrega se for delivery
             let customerName = '';
             if (order.sale_type === 'delivery') {
@@ -84,12 +81,12 @@ export default function PendingOrdersPage() {
                 .select('customer_name')
                 .eq('sale_id', order.id)
                 .single();
-    
+
               if (!deliveryError && deliveryData) {
                 customerName = deliveryData.customer_name;
               }
             }
-    
+
             // Para cada item, busca o produto relacionado
             const itemsWithProducts = await Promise.all(
               (itemsData || []).map(async (item) => {
@@ -98,7 +95,7 @@ export default function PendingOrdersPage() {
                   .select('id, name')
                   .eq('id', item.product_id)
                   .single();
-    
+
                 if (productError) {
                   console.error(`Product error for item ${item.id}:`, productError);
                   return {
@@ -106,14 +103,14 @@ export default function PendingOrdersPage() {
                     product: { id: item.product_id, name: 'Produto não encontrado' }
                   };
                 }
-    
+
                 return {
                   ...item,
                   product: productData
                 };
               })
             );
-    
+
             return {
               ...order,
               items: itemsWithProducts,
@@ -121,7 +118,7 @@ export default function PendingOrdersPage() {
             };
           })
         );
-    
+
         setOrders(ordersWithItems);
       } catch (error) {
         console.error('Full error:', error);
@@ -176,11 +173,10 @@ export default function PendingOrdersPage() {
                 <div className="flex justify-between text-gray-700 items-start">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                        order.sale_type === 'delivery' 
-                          ? 'bg-green-100 text-green-800' 
+                      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${order.sale_type === 'delivery'
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-blue-100 text-blue-800'
-                      }`}>
+                        }`}>
                         {order.sale_type === 'delivery' ? <FiTruck size={14} /> : <FiHome size={14} />}
                         <span>{order.sale_type === 'delivery' ? 'Entrega' : 'Retirada'}</span>
                       </div>
@@ -193,16 +189,16 @@ export default function PendingOrdersPage() {
                       {new Date(order.created_at).toLocaleString()}
                     </p>
                     <p className="mt-1">
-                      {order.sale_type === 'delivery' 
-                        ? `Cliente: ${order.customer_name || 'Não informado'}` 
+                      {order.sale_type === 'delivery'
+                        ? `Cliente: ${order.customer_name || 'Não informado'}`
                         : 'Retirada no local'}
                     </p>                    <p className="font-bold mt-2">Total: R$ {order.total?.toFixed(2).replace('.', ',')}</p>
                   </div>
                   <button
-                  onClick={() => navigateToPreparation(order.id)}
-                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                    onClick={() => navigateToPreparation(order.id)}
+                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
                   >
-                    <FiPackage  />
+                    <FiPackage />
                   </button>
                 </div>
                 <div className="mt-3 border-t pt-3 text-gray-700">
@@ -213,7 +209,7 @@ export default function PendingOrdersPage() {
                         <span>
                           {item.quantity}x {item.product.name}
                         </span>
-                        <span>R$ {(item.unit_price * item.quantity).toFixed(2).replace('.',',')}</span>
+                        <span>R$ {(item.unit_price * item.quantity).toFixed(2).replace('.', ',')}</span>
                       </li>
                     ))}
                   </ul>

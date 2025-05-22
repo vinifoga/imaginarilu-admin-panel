@@ -17,10 +17,10 @@ interface Produto {
   description: string;
   sale_price: number;
   category_id: string;
-  sku?: string; // Adicionando SKU como opcional
-  barcode?: string; // Adicionando código de barras como opcional
-  image_url?: string; // Adicionando URL da imagem como opcional
-  categorias?: Categoria[]; // Adicionando categorias como opcional
+  sku?: string;
+  barcode?: string;
+  image_url?: string;
+  categorias?: Categoria[];
   active?: boolean;
   sell_online?: boolean;
   sell_shopee?: boolean;
@@ -49,7 +49,6 @@ export default function ProdutosPage() {
 
 
 
-  // Busca os produtos e categorias do Supabase (só no cliente)
   useEffect(() => {
     const fetchProdutos = async () => {
       console.log('Buscando produtos...');
@@ -68,10 +67,8 @@ export default function ProdutosPage() {
       if (produtosError) {
         console.error('Erro ao buscar produtos:', produtosError);
       } else {
-        // Busca as imagens e categorias para cada produto
         const produtosComImagensECategorias = await Promise.all(
           produtosData.map(async (produto) => {
-            // Busca as imagens
             const { data: imagensData, error: imagensError } = await supabase
               .from('product_images')
               .select('image_url')
@@ -82,7 +79,6 @@ export default function ProdutosPage() {
               console.error('Erro ao buscar imagens:', imagensError);
             }
 
-            // Busca as categorias
             const { data: categoriasData, error: categoriasError } = await supabase
               .from('product_categories')
               .select('categories(id, name)')
@@ -92,7 +88,6 @@ export default function ProdutosPage() {
               console.error('Erro ao buscar categorias:', categoriasError);
             }
 
-            // Adiciona a URL da primeira imagem e as categorias ao produto
             return {
               ...produto,
               image_url: imagensData?.[0]?.image_url || null,
@@ -134,35 +129,31 @@ export default function ProdutosPage() {
 
 
 
-  // Filtra os produtos pelas categorias selecionadas
   const produtosFiltradosPorCategoria = filtroCategorias.length > 0
     ? produtos.filter((produto) =>
       produto.categorias?.some((categoria) => filtroCategorias.includes(categoria.id))
     )
     : produtos;
 
-  // Filtra os produtos pelo termo de pesquisa (nome, descrição, SKU ou código de barras)
   const produtosFiltrados = termoPesquisa
     ? produtosFiltradosPorCategoria.filter((produto) =>
-      produto.name.toLowerCase().includes(termoPesquisa.toLowerCase()) || // Pesquisa por nome
-      produto.description.toLowerCase().includes(termoPesquisa.toLowerCase()) || // Pesquisa por descrição
-      produto.sku?.toLowerCase().includes(termoPesquisa.toLowerCase()) || // Pesquisa por SKU
-      produto.barcode?.toLowerCase().includes(termoPesquisa.toLowerCase()) // Pesquisa por código de barras
+      produto.name.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+      produto.description.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+      produto.sku?.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+      produto.barcode?.toLowerCase().includes(termoPesquisa.toLowerCase())
     )
     : produtosFiltradosPorCategoria;
 
-  // Adiciona ou remove uma categoria do filtro
   const toggleCategoriaFiltro = (categoriaId: string) => {
     setFiltroCategorias((prev) =>
       prev.includes(categoriaId)
-        ? prev.filter((id) => id !== categoriaId) // Remove a categoria
-        : [...prev, categoriaId] // Adiciona a categoria
+        ? prev.filter((id) => id !== categoriaId)
+        : [...prev, categoriaId]
     );
   };
 
-  // Função para abrir a câmera e escanear o código de barras
   const abrirCameraParaScanner = () => {
-    setTermoPesquisa(''); // Limpa o termo de pesquisa
+    setTermoPesquisa('');
     setMostrarScanner(true);
   };
 
@@ -197,13 +188,11 @@ export default function ProdutosPage() {
     setIsModalOpen(true);
   };
 
-  // Função para fechar o modal
   const closeModal = () => {
     setIsModalOpen(false);
     setProdutoToInactivate(null);
   };
 
-  // Função para inativar/reativar produto
   const handleInactivateProduto = async () => {
     if (!produtoToInactivate) return;
 
@@ -325,7 +314,7 @@ export default function ProdutosPage() {
                   className="w-full h-full object-cover rounded-lg"
                 />
               ) : (
-                <PlaceholderImage /> // Usa o SVG como placeholder
+                <PlaceholderImage />
               )}
             </div>
 

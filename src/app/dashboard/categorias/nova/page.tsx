@@ -39,7 +39,7 @@ export default function NovaCategoriaPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    setTouchedFields({ nome: true }); // Marca como tocado para mostrar erros
+    setTouchedFields({ nome: true });
 
     if (!validateForm()) {
       toast.error('Por favor, preencha todos os campos obrigatórios', {
@@ -83,11 +83,10 @@ export default function NovaCategoriaPage() {
               }
             }}
             onBlur={() => handleFieldBlur('nome')}
-            className={`mt-1 block w-full p-2 rounded-lg border ${
-              fieldErrors.nome && (touchedFields.nome || submitted)
-                ? 'border-red-500' 
+            className={`mt-1 block w-full p-2 rounded-lg border ${fieldErrors.nome && (touchedFields.nome || submitted)
+                ? 'border-red-500'
                 : 'border-gray-300 focus:border-blue-500'
-            } bg-gray-700 text-white`}
+              } bg-gray-700 text-white`}
           />
           {(fieldErrors.nome && (touchedFields.nome || submitted)) && (
             <p className="mt-1 text-sm text-red-500">{fieldErrors.nome}</p>

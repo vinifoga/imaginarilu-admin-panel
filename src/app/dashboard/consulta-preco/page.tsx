@@ -47,7 +47,6 @@ export default function ConsultaPrecoPage() {
       setProduto(null);
       setProdutosEncontrados([]);
 
-      // Se o termo parece ser um código de barras (apenas números)
       if (/^\d+$/.test(termo)) {
         console.log(termo)
         const { data: produtoData, error: produtoError } = await supabase
@@ -62,7 +61,6 @@ export default function ConsultaPrecoPage() {
         }
       }
 
-      // Busca mais ampla por nome, descrição, SKU ou código de barras
       const { data: produtosData, error: produtosError } = await supabase
         .from('products')
         .select('*')
@@ -72,11 +70,9 @@ export default function ConsultaPrecoPage() {
         throw new Error('Nenhum produto encontrado');
       }
 
-      // Se encontrou apenas um produto, mostra diretamente
       if (produtosData.length === 1) {
         await carregarDetalhesProduto(produtosData[0]);
       } else {
-        // Se encontrou vários, mostra a lista
         const produtosComImagens = await Promise.all(
           produtosData.map(async (produto) => {
             const { data: imagemData } = await supabase
@@ -116,7 +112,6 @@ export default function ConsultaPrecoPage() {
     setProduto(produtoCompleto);
     setProdutosEncontrados([]);
 
-    // Se for uma composição, carrega os componentes
     if (produtoData.is_composition) {
       await carregarComponentes(produtoData.id);
     }
@@ -125,8 +120,7 @@ export default function ConsultaPrecoPage() {
   const carregarComponentes = async (produtoId: string) => {
     try {
       setCarregandoComponentes(true);
-      
-      // Busca os componentes do produto
+
       const { data: componentesData, error } = await supabase
         .from('product_components')
         .select('component_product_id, quantity')
@@ -134,7 +128,6 @@ export default function ConsultaPrecoPage() {
 
       if (error) throw error;
 
-      // Para cada componente, busca os detalhes do produto
       const componentesComDetalhes = await Promise.all(
         componentesData.map(async (componente) => {
           const { data: produtoData } = await supabase
@@ -171,7 +164,7 @@ export default function ConsultaPrecoPage() {
   };
 
   const abrirCameraParaScanner = () => {
-    setTermoPesquisa(''); // Limpa o termo de pesquisa
+    setTermoPesquisa('');
     setMostrarScanner(true);
   };
 
@@ -195,7 +188,7 @@ export default function ConsultaPrecoPage() {
   return (
     <div className="min-h-screen p-6 bg-gray-900 text-white">
       <h1 className="text-2xl font-bold mb-6 text-white">Consulta de Preço</h1>
-      
+
       {/* Formulário de pesquisa */}
       <form onSubmit={handleSubmit} className="mb-6">
         <div className="relative">
@@ -241,12 +234,12 @@ export default function ConsultaPrecoPage() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-              <PlaceholderImage /> // Usa o SVG como placeholder
-            )}
+                <PlaceholderImage />
+              )}
             </div>
 
             <div className="p-4 space-y-4">
-              <h2 className="text-xl font-bold text-gray-800">{produto.name}</h2>              
+              <h2 className="text-xl font-bold text-gray-800">{produto.name}</h2>
               <div className="flex justify-between">
                 {produto.description && (
                   <div className="space-y-2">
@@ -294,7 +287,7 @@ export default function ConsultaPrecoPage() {
                         />
                       </svg>
                     </button>
-                    
+
                     {mostrarComponentes && (
                       <div className="bg-gray-50 p-3 rounded-lg">
                         {carregandoComponentes ? (
@@ -304,19 +297,19 @@ export default function ConsultaPrecoPage() {
                             {componentes.map((componente, index) => (
                               <li key={index} className="border-b border-gray-200 pb-2 last:border-0">
                                 <div className="flex justify-between items-center w-full">
-                                    <div className="flex justify-start space-x-2">
-                                        <div>
-                                        <p className="text-gray-800 text-sm">{componente.quantity || 0}x</p>
-                                        </div>
-                                        <div>
-                                        <p className="text-gray-800 text-sm">{componente.product?.name || 'Produto não encontrado'}</p>
-                                        </div>
+                                  <div className="flex justify-start space-x-2">
+                                    <div>
+                                      <p className="text-gray-800 text-sm">{componente.quantity || 0}x</p>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-xs text-gray-500">
-                                        {componente.product ? formatarMoeda((componente.quantity * componente.product.sale_price).toFixed(2)) : 'N/A'}
-                                        </p>
+                                    <div>
+                                      <p className="text-gray-800 text-sm">{componente.product?.name || 'Produto não encontrado'}</p>
                                     </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-xs text-gray-500">
+                                      {componente.product ? formatarMoeda((componente.quantity * componente.product.sale_price).toFixed(2)) : 'N/A'}
+                                    </p>
+                                  </div>
                                 </div>
                               </li>
                             ))}
@@ -366,7 +359,6 @@ export default function ConsultaPrecoPage() {
             </div>
           </div>
         ) : produtosEncontrados.length > 0 ? (
-          // Lista de produtos encontrados na pesquisa
           <div className="space-y-4">
             {produtosEncontrados.map((produto) => (
               <div
@@ -382,7 +374,7 @@ export default function ConsultaPrecoPage() {
                       className="w-full h-full object-cover rounded-lg"
                     />
                   ) : (
-                    <PlaceholderImage /> // Usa o SVG como placeholder
+                    <PlaceholderImage />
                   )}
                 </div>
                 <div className="flex-1">

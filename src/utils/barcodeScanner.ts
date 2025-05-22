@@ -39,7 +39,6 @@ export class BarcodeScanner {
       },
       (errorMessage) => {
         if (this.isStopped) return;
-        // Ignora erros comuns de "não encontrado"
         if (!errorMessage.includes("No MultiFormat Readers")) {
           this.options.onError?.(errorMessage);
         }

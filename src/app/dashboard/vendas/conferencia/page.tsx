@@ -35,8 +35,8 @@ interface PaymentDetails {
   cashAmount: number;
   showDiscount: boolean;
   showAddition: boolean;
-  discount_amount: number; // Valor calculado do desconto
-  addition_amount: number; // Valor calculado do acréscimo
+  discount_amount: number;
+  addition_amount: number;
 }
 
 interface PaymentAdjustment {
@@ -90,7 +90,7 @@ export default function CheckoutPage() {
     addition_amount: 0
   });
   const [observations, setObservations] = useState('');
-  const [deliveryFee, setDeliveryFee] = useState(15); // Valor padrão de R$ 15,00
+  const [deliveryFee, setDeliveryFee] = useState(15);
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isOpen, setIsOpen] = useState(false);
@@ -133,7 +133,6 @@ export default function CheckoutPage() {
         const intervals = await checkAvailableIntervals(deliveryInfo.deliveryDate);
         setAvailableIntervals(intervals);
 
-        // Se o intervalo selecionado não estiver mais disponível, limpe o campo
         if (deliveryInfo.deliveryTime && !intervals.some(interval =>
           interval.startsWith(deliveryInfo.deliveryTime.substring(0, 5)))) {
           setDeliveryInfo(prev => ({ ...prev, deliveryTime: '' }));
@@ -149,18 +148,15 @@ export default function CheckoutPage() {
       return total + (item.product.sale_price * item.quantity);
     }, 0);
 
-    // Calcular desconto
     const discountValue = paymentDetails.discount.type === 'percentage'
       ? subtotal * (paymentDetails.discount.value / 100)
       : paymentDetails.discount.value;
     console.log(discountValue);
 
-    // Calcular acréscimo
     const additionValue = paymentDetails.addition.type === 'percentage'
       ? subtotal * (paymentDetails.addition.value / 100)
       : paymentDetails.addition.value;
 
-    // Adicionar taxa de entrega se for delivery
     const deliveryFeeValue = saleType === 'delivery' ? deliveryFee : 0;
 
     if (updateState) {
@@ -176,7 +172,7 @@ export default function CheckoutPage() {
 
   const calcularTroco = () => {
     if (paymentMethod !== 'cash' || paymentDetails.cashAmount <= 0) return 0;
-    return paymentDetails.cashAmount - calcularValorTotal(); // Sem atualizar estado
+    return paymentDetails.cashAmount - calcularValorTotal();
   };
 
   const handleAdjustmentChange = (field: 'discount' | 'addition', key: keyof PaymentAdjustment, value: string | number) => {
@@ -189,10 +185,8 @@ export default function CheckoutPage() {
         }
       }));
     } else if (key === 'value') {
-      // Garante que o valor é numérico
       const numValue = typeof value === 'number' ? value : parseFloat(value as string) || 0;
 
-      // Limita porcentagem a 100% e garante que é positivo
       const adjustedValue = Math.min(
         Math.max(numValue, 0),
         paymentDetails[field].type === 'percentage' ? 100 : Number.MAX_SAFE_INTEGER
@@ -210,7 +204,7 @@ export default function CheckoutPage() {
 
   const handleFieldBlur = (fieldName: string) => {
     setTouchedFields(prev => ({ ...prev, [fieldName]: true }));
-    validateForms(); // Validação em tempo real após sair do campo
+    validateForms();
   };
 
   const toggleAdjustment = (field: 'discount' | 'addition') => {
@@ -322,7 +316,6 @@ export default function CheckoutPage() {
   const handleSubmit = async () => {
 
     if (!validateForms()) {
-      // Mostra toast de erro
       toast.error('Por favor, preencha todos os campos obrigatórios', {
         position: "top-center",
         autoClose: 5000,
@@ -333,7 +326,6 @@ export default function CheckoutPage() {
         progress: undefined,
       });
 
-      // Rola a página para o topo para mostrar os erros
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -363,7 +355,6 @@ export default function CheckoutPage() {
 
       if (saleError) throw saleError;
 
-      // 2. Adicionar itens da venda
       const saleItems = cartItems.map(item => ({
         sale_id: sale.id,
         product_id: item.product.id,
@@ -379,7 +370,6 @@ export default function CheckoutPage() {
 
       if (itemsError) throw itemsError;
 
-      // 3. Se for entrega, adicionar informações de entrega
       if (saleType === 'delivery') {
         const { error: deliveryError } = await supabase
           .from('delivery_infos')
@@ -404,7 +394,6 @@ export default function CheckoutPage() {
         if (deliveryError) throw deliveryError;
       }
 
-      // 4. Redirecionar para tela de sucesso ou impressão
       router.push(`/dashboard/vendas/comprovante/${sale.id}`);
     } catch (error) {
       console.error('Error completing sale:', error);
@@ -427,7 +416,6 @@ export default function CheckoutPage() {
     if (!date) return generateTimeIntervals();
 
     try {
-      // Converter a string da data para o formato YYYY-MM-DD
       const formattedDate = new Date(date).toISOString().split('T')[0];
 
       const { data: deliveries, error } = await supabase
@@ -447,7 +435,6 @@ export default function CheckoutPage() {
       deliveries?.forEach(delivery => {
         if (delivery.delivery_time) {
           const timeStr = delivery.delivery_time;
-          // Extrai a hora do formato time (HH:MM:SS)
           const hour = parseInt(timeStr.split(':')[0]);
           if (hour >= 7 && hour < 19) {
             const interval = `${hour.toString().padStart(2, '0')}:00 às ${(hour + 1).toString().padStart(2, '0')}:00`;
@@ -463,22 +450,18 @@ export default function CheckoutPage() {
     }
   };
 
-  // Adicione esta função no seu componente
   const validateForms = (): boolean => {
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
-    // Marca todos os campos obrigatórios como tocados
     const newTouchedFields = { ...touchedFields };
 
-    // Validação básica para todos os tipos de venda
     if (!paymentMethod) {
       newErrors.paymentMethod = 'Selecione um método de pagamento';
       newTouchedFields.paymentMethod = true;
       isValid = false;
     }
 
-    // Validação específica para entregas
     if (saleType === 'delivery') {
       const requiredFields = [
         'customerName', 'customerPhone', 'deliveryDate', 'deliveryTime',
@@ -504,12 +487,10 @@ export default function CheckoutPage() {
     return isValid;
   };
 
-  // Função para abrir o modal
   const openCashModal = () => {
     setIsOpen(true);
   };
 
-  // Função para fechar o modal
   const closeCashModal = () => {
     setIsOpen(false);
   };
@@ -704,7 +685,6 @@ export default function CheckoutPage() {
                     }
                     onChange={(e) => {
                       const interval = e.target.value;
-                      // Extrai apenas a hora inicial (07:00) do intervalo selecionado
                       const startTime = interval.split(' ')[0];
                       setDeliveryInfo(prev => ({ ...prev, deliveryTime: startTime }));
                     }}
@@ -803,7 +783,7 @@ export default function CheckoutPage() {
                 <label className="block text-sm text-gray-400 mb-1">Taxa de Entrega</label>
                 <CurrencyInput
                   value={deliveryFee}
-                  onChange={(value) => setDeliveryFee(Math.max(0, value))} // Garante que não seja negativo
+                  onChange={(value) => setDeliveryFee(Math.max(0, value))}
                   className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
                 />
               </div>
@@ -960,7 +940,7 @@ export default function CheckoutPage() {
                   }
                   setPaymentMethod(method as 'cash' | 'credit_card' | 'debit_card' | 'pix');
 
-                  handleFieldBlur('paymentMethod'); // Marca o campo como tocado
+                  handleFieldBlur('paymentMethod');
                   validateForms();
                 }}
                 className={`p-4 rounded-lg border ${paymentMethod === method ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600'}`}

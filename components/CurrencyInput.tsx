@@ -14,7 +14,6 @@ export function CurrencyInput({ value, onChange, placeholder, className }: Curre
   const [displayValue, setDisplayValue] = useState('');
 
   useEffect(() => {
-    // Formata o valor inicial
     if (value !== undefined && value !== null) {
       const formatted = new Intl.NumberFormat('pt-BR', {
         style: 'decimal',
@@ -28,7 +27,7 @@ export function CurrencyInput({ value, onChange, placeholder, className }: Curre
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/\D/g, '');
     const numberValue = parseFloat(rawValue) / 100;
-    
+
     if (!isNaN(numberValue)) {
       onChange(numberValue);
     } else {

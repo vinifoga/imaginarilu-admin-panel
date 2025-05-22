@@ -12,7 +12,6 @@ export default function DashboardPage() {
   const [activeButton, setActiveButton] = useState<string | null>(null);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
-  // Função reutilizável para navegação
   const handleNavigation = (path: string) => {
     setActiveButton(path);
     router.push(path);
@@ -22,8 +21,6 @@ export default function DashboardPage() {
     await supabase.auth.signOut();
     router.push('/login');
   };
-
-  // Busca pedidos pendentes
   useEffect(() => {
     const fetchPendingOrders = async () => {
       const { count, error } = await supabase
@@ -38,7 +35,6 @@ export default function DashboardPage() {
 
     fetchPendingOrders();
 
-    // Configura realtime para atualizações
     const channel = supabase
       .channel('sales_changes')
       .on(
@@ -53,7 +49,6 @@ export default function DashboardPage() {
     };
   }, []);
 
-  // Configuração dos botões
   const buttons = [
     {
       path: '/dashboard/consulta-preco',

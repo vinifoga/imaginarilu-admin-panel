@@ -7,7 +7,7 @@ interface ConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  onCancel?: () => void; // Adicione esta linha
+  onCancel?: () => void;
   title: string;
   message: ReactNode;
   confirmText?: string;
@@ -18,7 +18,7 @@ export default function ConfirmationModal({
   isOpen,
   onClose,
   onConfirm,
-  onCancel, // Adicione esta linha
+  onCancel,
   title,
   message,
   confirmText = 'Confirmar',
@@ -86,7 +86,7 @@ export default function ConfirmationModal({
             </button>
             <button
               type="button"
-              onClick={onCancel || onClose} // Modifique esta linha
+              onClick={onCancel || onClose}
               className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-gray-600 text-base font-medium text-white hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
             >
               {cancelText}

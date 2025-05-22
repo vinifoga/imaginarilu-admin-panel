@@ -6,22 +6,22 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseCliente';
 import { formatarMoeda } from '@/utils/moeda';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
-import PlaceholderImage from '../../../../components/PlaceholderImage'; 
+import PlaceholderImage from '../../../../components/PlaceholderImage';
 import { useSearchParams } from 'next/navigation';
 import { useLoading } from '@/contexts/loading-context';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 interface Product {
-    id: string;
-    name: string;
-    description: string;
-    barcode: string;
-    sku: string;
-    sale_price: number;
-    image_url: string | null;
-    is_composition: boolean;
-  }
+  id: string;
+  name: string;
+  description: string;
+  barcode: string;
+  sku: string;
+  sale_price: number;
+  image_url: string | null;
+  is_composition: boolean;
+}
 
 interface CartItem {
   product: Product;
@@ -40,7 +40,6 @@ export default function VendasPage() {
 
 
   useEffect(() => {
-    // Carregar itens do carrinho dos query params ao voltar da conferência
     const cartParam = searchParams.get('cart');
     if (cartParam) {
       try {
@@ -128,14 +127,14 @@ export default function VendasPage() {
 
     if (existingItem) {
       const newQuantity = existingItem.quantity + quantity;
-      
+
       setCartItems(cartItems.map((item) =>
-        item.product.id === product.id 
-          ? { ...item, quantity: newQuantity } 
+        item.product.id === product.id
+          ? { ...item, quantity: newQuantity }
           : item
       ));
     } else {
-      
+
       setCartItems([...cartItems, { product, quantity }]);
     }
 
@@ -160,47 +159,47 @@ export default function VendasPage() {
     setLoading(true);
     if (cartItems.length === 0) {
       toast.error(`Adicione produtos ao carrinho antes de finalizar a venda`, {
-              position: "top-right",
-              autoClose: 3000,
-              hideProgressBar: false,
-              closeOnClick: true,
-              pauseOnHover: true,
-              draggable: true,
-              progress: undefined,
-            });
-    setLoading(false);
-    } else {    
-        router.push(`/dashboard/vendas/conferencia?cart=${encodeURIComponent(JSON.stringify(cartItems))}`);
-        setLoading(false);
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+      setLoading(false);
+    } else {
+      router.push(`/dashboard/vendas/conferencia?cart=${encodeURIComponent(JSON.stringify(cartItems))}`);
+      setLoading(false);
     }
-    };
+  };
 
   return (
     <div className="min-h-screen p-6 bg-gray-900 text-white">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Nova Venda</h1>
-        {cartItems.length > 0 && (
+          {cartItems.length > 0 && (
             <button
-            onClick={limparCarrinho}
-            className="ml-2 text-red-500 hover:text-red-700 transition-colors"
+              onClick={limparCarrinho}
+              className="ml-2 text-red-500 hover:text-red-700 transition-colors"
             >
-             <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
             </button>
-        )}
+          )}
         </div>
 
         {/* Campo de Pesquisa */}
@@ -285,107 +284,107 @@ export default function VendasPage() {
 
         {/* Itens no Carrinho */}
         {cartItems.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-300 mb-2">Produtos no Carrinho</h2>
-          {cartItems.map((item) => (
-            <div
-              key={item.product.id}
-              className="bg-gray-800 p-4 rounded-lg border border-gray-700"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-gray-700">
-                    {item.product.image_url ? (
-                      <img
-                        src={item.product.image_url}
-                        alt={item.product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <PlaceholderImage /> // Usa o SVG como placeholder
-                    )}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-300 mb-2">Produtos no Carrinho</h2>
+            {cartItems.map((item) => (
+              <div
+                key={item.product.id}
+                className="bg-gray-800 p-4 rounded-lg border border-gray-700"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-gray-700">
+                      {item.product.image_url ? (
+                        <img
+                          src={item.product.image_url}
+                          alt={item.product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <PlaceholderImage />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-300">{item.product.name}</h3>
+                      <p className="text-sm text-gray-400">SKU: {item.product.sku}</p>
+                      <p className="text-sm text-gray-400">Código: {item.product.barcode}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removerDoCarrinho(item.product.id)}
+                    className="text-red-500 hover:text-red-400"
+                  >
+                    Remover
+                  </button>
+                </div>                 <div className="grid grid-cols-3 gap-4 mt-3">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Quantidade</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => atualizarQuantidade(item.product.id, Number(e.target.value))}
+                      className="w-full p-2 rounded border border-gray-600 focus:border-blue-500 bg-gray-700 text-white"
+                    />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-300">{item.product.name}</h3>
-                    <p className="text-sm text-gray-400">SKU: {item.product.sku}</p>
-                    <p className="text-sm text-gray-400">Código: {item.product.barcode}</p>
+                    <label className="block text-sm text-gray-400 mb-1">Valor Unitário</label>
+                    <div className="p-2 bg-gray-700 rounded text-white">
+                      {formatarMoeda(item.product.sale_price)}
+                    </div>
                   </div>
-                </div>
-                <button
-                  onClick={() => removerDoCarrinho(item.product.id)}
-                  className="text-red-500 hover:text-red-400"
-                >
-                  Remover
-                </button>
-              </div>                 <div className="grid grid-cols-3 gap-4 mt-3">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Quantidade</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.quantity}
-                    onChange={(e) => atualizarQuantidade(item.product.id, Number(e.target.value))}
-                    className="w-full p-2 rounded border border-gray-600 focus:border-blue-500 bg-gray-700 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Valor Unitário</label>
-                  <div className="p-2 bg-gray-700 rounded text-white">
-                    {formatarMoeda(item.product.sale_price)}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Valor Total</label>
-                  <div className="p-2 bg-gray-700 rounded text-blue-400 font-medium">
-                    {formatarMoeda(item.product.sale_price * item.quantity)}
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Valor Total</label>
+                    <div className="p-2 bg-gray-700 rounded text-blue-400 font-medium">
+                      {formatarMoeda(item.product.sale_price * item.quantity)}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-       )}
+            ))}
+          </div>
+        )}
 
         {/* Botão de Voltar */}
         <button
-        onClick={() => router.push('/dashboard')}
-        className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+          onClick={() => router.push('/dashboard')}
+          className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
         >
-            <svg
+          <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-            >
+          >
             <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
-            </svg>
+          </svg>
         </button>
 
-        {/* Botão avançar */ }
+        {/* Botão avançar */}
         <button
-            onClick={proceedToCheckout}
-            className="fixed bottom-6 right-6 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700"
+          onClick={proceedToCheckout}
+          className="fixed bottom-6 right-6 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700"
         >
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-            >
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                />
-            </svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M14 5l7 7m0 0l-7 7m7-7H3"
+            />
+          </svg>
         </button>
 
         {/* Modal do Scanner */}

@@ -21,7 +21,6 @@ export default function CategoriasPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [categoriaToDelete, setCategoriaToDelete] = useState<string | null>(null);
 
-  // Busca as categorias do Supabase (só no cliente)
   useEffect(() => {
     const fetchCategorias = async () => {
       console.log('Buscando categorias...');
@@ -41,24 +40,20 @@ export default function CategoriasPage() {
     fetchCategorias();
   }, []);
 
-  // Função para abrir o modal de confirmação
   const openDeleteModal = (id: string) => {
     setCategoriaToDelete(id);
     setIsModalOpen(true);
   };
 
-  // Função para fechar o modal
   const closeModal = () => {
     setIsModalOpen(false);
     setCategoriaToDelete(null);
   };
 
-  // Função para excluir uma categoria
   const handleExcluirCategoria = async () => {
     if (!categoriaToDelete) return;
 
     try {
-      // Remove os relacionamentos na tabela product_categories
       const { error: relError } = await supabase
         .from('product_categories')
         .delete()
@@ -66,7 +61,6 @@ export default function CategoriasPage() {
 
       if (relError) throw relError;
 
-      // Remove a categoria da tabela categories
       const { error } = await supabase
         .from('categories')
         .delete()
@@ -74,11 +68,10 @@ export default function CategoriasPage() {
 
       if (error) throw error;
 
-      // Atualiza a lista de categorias após a exclusão
       setCategorias(categorias.filter((categoria) => categoria.id !== categoriaToDelete));
       toast.success('Categoria excluída com sucesso!');
     } catch (error) {
-      toast.error('Erro ao excluir categoria: '+ (error as Error).message);
+      toast.error('Erro ao excluir categoria: ' + (error as Error).message);
     } finally {
       closeModal();
     }
@@ -87,7 +80,7 @@ export default function CategoriasPage() {
   return (
     <div className="min-h-screen p-6 bg-gray-900 text-white">
       <h1 className="text-2xl font-bold mb-6 text-white">Categorias</h1>
-      
+
       {/* Lista de Categorias */}
       <div className="space-y-4">
         {categorias.map((categoria) => (

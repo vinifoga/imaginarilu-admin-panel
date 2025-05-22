@@ -40,7 +40,7 @@ export default function ConsultaVendasPage() {
   const fetchSales = async () => {
     setLoading(true);
     setError(null);
-  
+
     try {
       if (!searchTerm) {
         const { data, error } = await supabase
@@ -48,35 +48,33 @@ export default function ConsultaVendasPage() {
           .select('*, delivery_infos (*)')
           .order('created_at', { ascending: false })
           .limit(20);
-  
+
         if (error) throw error;
         setSales(data?.map(s => ({ ...s, delivery_info: s.delivery_infos?.[0] || null })) || []);
         return;
       }
-  
-      // Consulta que simula LEFT JOIN com OR conditions
+
       const { data: salesData, error: salesError } = await supabase
         .from('sales')
         .select('*')
         .or(`sale_id.ilike.%${searchTerm}%`);
-  
+
       const { data: deliveryData, error: deliveryError } = await supabase
         .from('delivery_infos')
         .select('*, sales!inner(*)')
         .or(`customer_name.ilike.%${searchTerm}%,customer_phone.ilike.%${searchTerm}%`);
-  
+
       if (salesError || deliveryError) throw salesError || deliveryError;
-  
-      // Combinar resultados e remover duplicatas
+
       const salesFromDelivery = deliveryData?.map(d => ({ ...d.sales, delivery_info: d })) || [];
       const allSales = [...(salesData || []), ...salesFromDelivery];
-      
+
       const uniqueSales = Array.from(new Map(
         allSales.map(s => [s.id, s])
       ).values());
-  
-      setSales(uniqueSales.slice(0, 20)); // Limitar a 20 resultados
-  
+
+      setSales(uniqueSales.slice(0, 20));
+
     } catch (error) {
       console.error('Erro ao buscar vendas:', error);
       setError('Erro ao buscar vendas. Verifique o console.');
@@ -89,32 +87,27 @@ export default function ConsultaVendasPage() {
     fetchSales();
   }, [searchTerm]);
 
-  // Função para formatar a data de entrega
   const formatDeliveryDate = (sale: Sale) => {
     if (sale.sale_type === 'pickup') return 'Retirada';
-    
+
     if (sale.delivery_info?.delivery_date && sale.delivery_info?.delivery_time) {
-      // Extrai manualmente as partes da data ISO (YYYY-MM-DD)
       const [year, month, day] = sale.delivery_info.delivery_date.split('T')[0].split('-');
       const formattedDate = `${day}/${month}/${year}`;
-      
-      // Extrai horas e minutos (HH:MM:SS -> HH:MM)
+
       const formattedTime = sale.delivery_info.delivery_time.substring(0, 5);
-      
+
       return `Entrega - ${formattedDate} - ${formattedTime}`;
     }
-    
+
     return 'Entrega - Data não especificada';
   };
 
-  // Função para extrair o número do pedido (usando o ID encurtado)
   const extractOrderNumber = (id: string) => {
     return id.slice(0, 8).toUpperCase();
   };
 
-  // Função para traduzir o método de pagamento
   const translatePaymentMethod = (method: string) => {
-    switch(method) {
+    switch (method) {
       case 'cash': return 'Dinheiro';
       case 'credit_card': return 'Cartão Crédito';
       case 'debit_card': return 'Cartão Débito';
@@ -123,7 +116,6 @@ export default function ConsultaVendasPage() {
     }
   };
 
-  // Navegação para detalhes da venda
   const viewSaleDetails = (saleId: string) => {
     router.push(`/dashboard/vendas/detalhes/${saleId}`);
   };
@@ -141,23 +133,23 @@ export default function ConsultaVendasPage() {
         )}
         {/* Filtros de pesquisa */}
         <div className="mb-6 bg-gray-800 p-4 rounded-lg">
-            <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                Pesquisar vendas
-                </label>
-                <div className="relative">
-                <input
-                    type="text"
-                    placeholder="N° pedido, nome ou telefone do cliente..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full p-3 pl-10 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
-                />
-                <FiSearch className="absolute left-3 top-3.5 text-gray-400" />
-                </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Pesquisar vendas
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="N° pedido, nome ou telefone do cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full p-3 pl-10 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
+              />
+              <FiSearch className="absolute left-3 top-3.5 text-gray-400" />
             </div>
+          </div>
         </div>
- 
+
 
         {/* Resultados */}
         <div className="bg-gray-800 rounded-lg overflow-hidden">
@@ -172,8 +164,8 @@ export default function ConsultaVendasPage() {
           ) : (
             <div className="divide-y divide-gray-700">
               {sales.map((sale) => (
-                <div 
-                  key={sale.id} 
+                <div
+                  key={sale.id}
                   className="p-4 hover:bg-gray-700 cursor-pointer transition-colors"
                   onClick={() => viewSaleDetails(sale.id)}
                 >
@@ -184,12 +176,12 @@ export default function ConsultaVendasPage() {
                         <span className="font-medium">#{extractOrderNumber(sale.id)}</span>
                         <OrderBadge status={OrderStatus[sale.status as keyof typeof OrderStatus]} />
                       </div>
-                      
+
                       <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
                         {sale.sale_type === 'delivery' ? <FiTruck /> : <FiHome />}
                         <span>{formatDeliveryDate(sale)}</span>
                       </div>
-                      
+
                       <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
                         <FiUser />
                         <span>
@@ -197,7 +189,7 @@ export default function ConsultaVendasPage() {
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="text-right">
                       <div className="flex items-center justify-end gap-2 text-sm text-gray-400 mb-1">
                         <FiCalendar />
@@ -208,13 +200,13 @@ export default function ConsultaVendasPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="mt-3 flex justify-between items-center">
                     <div className="flex items-center gap-2 text-sm text-gray-400">
                       <span>{translatePaymentMethod(sale.payment_method)}</span>
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         viewSaleDetails(sale.id);
@@ -252,7 +244,7 @@ export default function ConsultaVendasPage() {
             />
           </svg>
         </button>
-        
+
       </div>
     </div>
   );

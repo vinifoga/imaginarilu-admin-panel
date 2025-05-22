@@ -25,7 +25,7 @@ export const BarcodeScannerModal = forwardRef<BarcodeScannerModalRef, BarcodeSca
           console.log("Parando scanner...");
           scannerRef.current.stop();
           isScanning.current = false;
-          liberarCamera(); // Garante que a câmera seja desligada
+          liberarCamera();
         }
       }
     }));
@@ -35,22 +35,22 @@ export const BarcodeScannerModal = forwardRef<BarcodeScannerModalRef, BarcodeSca
         .then((stream) => {
           stream.getTracks().forEach(track => {
             console.log('Parando track de vídeo:', track);
-            track.stop(); // Força o encerramento
+            track.stop();
           });
         })
         .catch(error => console.error("Erro ao liberar câmera:", error));
-    };    
-    
+    };
+
     useEffect(() => {
       if (!isScanning.current && scannerRef.current === null) {
         isScanning.current = true;
-        scannerRef.current = new BarcodeScanner({ 
+        scannerRef.current = new BarcodeScanner({
           onSuccess: (decodedText) => {
             onScan(decodedText);
             if (scannerRef.current) {
               scannerRef.current.stop();
               isScanning.current = false;
-              liberarCamera(); // Fecha a câmera antes de esconder o modal
+              liberarCamera();
             }
             onClose();
           },
@@ -62,7 +62,7 @@ export const BarcodeScannerModal = forwardRef<BarcodeScannerModalRef, BarcodeSca
         });
         scannerRef.current.start('qr-reader');
       }
-    
+
       return () => {
         if (scannerRef.current) {
           scannerRef.current.stop();
@@ -71,21 +71,21 @@ export const BarcodeScannerModal = forwardRef<BarcodeScannerModalRef, BarcodeSca
         }
       };
     }, [onScan, onError, onClose]);
-    
+
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50">
         <div className="bg-white p-4 rounded-lg w-full max-w-md">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-gray-800">Escanear Código de Barras</h2>
-            <button 
+            <button
               onClick={() => {
                 if (scannerRef.current) {
                   scannerRef.current.stop();
                   isScanning.current = false;
                 }
                 onClose();
-              }}  
+              }}
               className="text-gray-700 hover:text-gray-900"
               aria-label="Fechar scanner"
             >

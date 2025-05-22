@@ -73,21 +73,17 @@ export default function SimulacaoPage() {
   };
 
   const adicionarProdutoSimulacao = (produto: Product, quantidade: number = 1) => {
-    // Verifica se o produto já está na simulação
     const produtoExistente = produtosSimulados.find((p) => p.product.id === produto.id);
 
     if (produtoExistente) {
-      // Se já existe, apenas atualiza a quantidade
       const novosProdutos = produtosSimulados.map((p) =>
         p.product.id === produto.id ? { ...p, quantity: p.quantity + quantidade } : p
       );
       setProdutosSimulados(novosProdutos);
     } else {
-      // Se não existe, adiciona novo produto
       setProdutosSimulados([...produtosSimulados, { product: produto, quantity: quantidade, is_composition: produto.is_composition }]);
     }
 
-    // Limpa a pesquisa
     setTermoPesquisa('');
     setResultadosPesquisa([]);
   };
@@ -200,7 +196,7 @@ export default function SimulacaoPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                    <PlaceholderImage /> // Usa o SVG como placeholder
+                      <PlaceholderImage />
                     )}
                   </div>
                 </div>
@@ -246,7 +242,7 @@ export default function SimulacaoPage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <PlaceholderImage /> // Usa o SVG como placeholder
+                        <PlaceholderImage />
                       )}
                     </div>
                     <div>
@@ -327,66 +323,61 @@ export default function SimulacaoPage() {
       </button>
 
       {produtosSimulados.length > 0 && (
-      <>
-        <button
-          className="fixed bottom-6 right-25 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700"
-          onClick={() => {
-            // Lógica para criar orçamento
-            const orcamentoData = {
-              produtos: produtosSimulados,
-              valorTotal: calcularValorTotal(),
-              dataValidade: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) // 3 dias a partir de agora
-            };
-            localStorage.setItem('orcamentoAtual', JSON.stringify(orcamentoData));
-            window.open('/dashboard/orcamento/impressao', '_blank');
-          }}
-        >
-          <PrintIcon />
-        </button>
-      </>
-    )}
+        <>
+          <button
+            className="fixed bottom-6 right-25 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700"
+            onClick={() => {
+              const orcamentoData = {
+                produtos: produtosSimulados,
+                valorTotal: calcularValorTotal(),
+                dataValidade: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+              };
+              localStorage.setItem('orcamentoAtual', JSON.stringify(orcamentoData));
+              window.open('/dashboard/orcamento/impressao', '_blank');
+            }}
+          >
+            <PrintIcon />
+          </button>
+        </>
+      )}
 
       {/* Botão para criar produto composto (opcional) */}
       {produtosSimulados.length > 0 && (
         <button
-        className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
-        onClick={async () => {
-          // Buscar os preços de custo dos produtos selecionados
-          const productIds = produtosSimulados.map(p => p.product.id);
-          const { data: produtosCompletos, error } = await supabase
-            .from('products')
-            .select('id, cost_price')
-            .in('id', productIds);
-          
-          if (error) {
-            console.error('Erro ao buscar preços de custo:', error);
-            return;
-          }
-          
-          // Adicionar cost_price aos produtos simulados
-          const produtosComCostPrice = produtosSimulados.map(item => {
-            const produtoCompleto = produtosCompletos.find(p => p.id === item.product.id) || { cost_price: 0 };
-            return {
-              product: {
-                ...item.product,
-                cost_price: produtoCompleto.cost_price
-              },
-              quantity: item.quantity
+          className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+          onClick={async () => {
+            const productIds = produtosSimulados.map(p => p.product.id);
+            const { data: produtosCompletos, error } = await supabase
+              .from('products')
+              .select('id, cost_price')
+              .in('id', productIds);
+
+            if (error) {
+              console.error('Erro ao buscar preços de custo:', error);
+              return;
+            }
+
+            const produtosComCostPrice = produtosSimulados.map(item => {
+              const produtoCompleto = produtosCompletos.find(p => p.id === item.product.id) || { cost_price: 0 };
+              return {
+                product: {
+                  ...item.product,
+                  cost_price: produtoCompleto.cost_price
+                },
+                quantity: item.quantity
+              };
+            });
+
+            const simulationData = {
+              produtos: produtosComCostPrice,
+              valorTotal: calcularValorTotal(),
+              isComposition: true
             };
-          });
-          
-          // Criar objeto com os dados completos
-          const simulationData = {
-            produtos: produtosComCostPrice,
-            valorTotal: calcularValorTotal(),
-            isComposition: true
-          };
-          
-          // Codificar e redirecionar
-          const encodedData = encodeURIComponent(JSON.stringify(simulationData));
-          router.push(`/dashboard/produtos/novo?simulation=${encodedData}`);
-        }}
-      >
+
+            const encodedData = encodeURIComponent(JSON.stringify(simulationData));
+            router.push(`/dashboard/produtos/novo?simulation=${encodedData}`);
+          }}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6"

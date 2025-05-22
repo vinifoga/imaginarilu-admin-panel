@@ -41,10 +41,9 @@ export default function ImpressaoOrcamento() {
 
   useEffect(() => {
     console.log('Iniciando carregamento do orçamento...');
-    
+
     const carregarOrcamento = async () => {
       try {
-        // 1. Carregar dados do localStorage
         const orcamentoSalvo = localStorage.getItem('orcamentoAtual');
         if (!orcamentoSalvo) {
           console.error('Nenhum orçamento encontrado no localStorage');
@@ -53,12 +52,11 @@ export default function ImpressaoOrcamento() {
         }
 
         console.log('Dados do localStorage:', orcamentoSalvo);
-        
+
         const parsedOrcamento = JSON.parse(orcamentoSalvo) as OrcamentoData;
         setOrcamento(parsedOrcamento);
         console.log('Orçamento parseado:', parsedOrcamento);
 
-        // 2. Verificar se há produtos compostos
         const produtosCompostos = parsedOrcamento.produtos.filter(
           p => p.product.is_composition
         );
@@ -68,32 +66,32 @@ export default function ImpressaoOrcamento() {
         console.log('Produtos compostos encontrados:', produtosCompostos.length);
 
         if (produtosCompostos.length > 0) {
-            console.log('Iniciando busca de componentes...');
-            const componentesMap: Record<string, ProductComponent[]> = {};
-          
-            for (const produto of produtosCompostos) {
-              console.log(`Buscando componentes para produto ${produto.product.id}...`);
-              const { data, error } = await supabase
-                .from('product_components')
-                .select(`
+          console.log('Iniciando busca de componentes...');
+          const componentesMap: Record<string, ProductComponent[]> = {};
+
+          for (const produto of produtosCompostos) {
+            console.log(`Buscando componentes para produto ${produto.product.id}...`);
+            const { data, error } = await supabase
+              .from('product_components')
+              .select(`
                   component_product_id, 
                   quantity,
                   component_product:component_product_id (name, sale_price)
                 `)
-                .eq('parent_product_id', produto.product.id);
-          
-              if (error) {
-                console.error(`Erro ao buscar componentes para produto ${produto.product.id}:`, error);
-                continue;
-              }
-          
-              console.log(`Componentes encontrados para ${produto.product.id}:`, data);
-              componentesMap[produto.product.id] = data as unknown as ProductComponent[];
+              .eq('parent_product_id', produto.product.id);
+
+            if (error) {
+              console.error(`Erro ao buscar componentes para produto ${produto.product.id}:`, error);
+              continue;
             }
-          
-            setComponentes(componentesMap);
-            console.log('Todos componentes carregados:', componentesMap);
+
+            console.log(`Componentes encontrados para ${produto.product.id}:`, data);
+            componentesMap[produto.product.id] = data as unknown as ProductComponent[];
           }
+
+          setComponentes(componentesMap);
+          console.log('Todos componentes carregados:', componentesMap);
+        }
 
         setStatus('ready');
         console.log('Todos dados carregados com sucesso!');
@@ -110,11 +108,9 @@ export default function ImpressaoOrcamento() {
   useEffect(() => {
     if (status === 'ready') {
       console.log('Dados prontos, preparando para imprimir...');
-      // Adicionamos um pequeno delay para garantir que o DOM esteja atualizado
       const timer = setTimeout(() => {
         console.log('Executando impressão...');
         window.print();
-        // Fechar a janela após um pequeno delay
         setTimeout(() => {
           console.log('Fechando janela...');
           // window.close();
@@ -174,45 +170,45 @@ export default function ImpressaoOrcamento() {
                   </tr>
                 </thead>
                 <tbody>
-                {orcamento?.produtos.map((item, index) => (
+                  {orcamento?.produtos.map((item, index) => (
                     <React.Fragment key={`produto-${item.product.id}`}>
-                    <tr className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} print:!bg-transparent`}>
+                      <tr className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} print:!bg-transparent`}>
                         <td className="px-2 py-1 md:px-4 md:py-2 print:py-0 print:border-none">
-                        <div className="flex items-center gap-1 print:gap-0">
+                          <div className="flex items-center gap-1 print:gap-0">
                             <span className="text-sm md:text-base text-gray-700 print:text-xs print:font-bold">
-                            {item.quantity}x {item.product.name}
-                            {item.product.is_composition && " (Composto)"}
+                              {item.quantity}x {item.product.name}
+                              {item.product.is_composition && " (Composto)"}
                             </span>
-                        </div>
+                          </div>
                         </td>
                         <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-500 text-sm print:hidden">
-                        {formatarMoeda(item.product.sale_price)}
+                          {formatarMoeda(item.product.sale_price)}
                         </td>
                         <td className="px-2 py-1 md:px-4 md:py-2 text-right text-gray-700 font-medium text-sm print:text-xs print:py-0 print:border-none">
-                        {formatarMoeda(item.product.sale_price * item.quantity)}
+                          {formatarMoeda(item.product.sale_price * item.quantity)}
                         </td>
-                    </tr>
-                    {/* Mostrar componentes se for um produto composto */}
-                    {item.product.is_composition && componentes[item.product.id]?.map((componente) => (
-                    <tr key={`${item.product.id}-comp-${componente.component_product_id}`} className="print:!bg-transparent">
-                      <td className="px-2 py-1 md:px-4 md:py-2 pl-8 print:pl-4 print:py-0 print:border-none">
-                        <div className="flex items-center">
-                          <span className="text-xs text-gray-500 print:text-[0.65rem]">
-                            {componente.quantity}x {componente.component_product.name}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                      </tr>
+                      {/* Mostrar componentes se for um produto composto */}
+                      {item.product.is_composition && componentes[item.product.id]?.map((componente) => (
+                        <tr key={`${item.product.id}-comp-${componente.component_product_id}`} className="print:!bg-transparent">
+                          <td className="px-2 py-1 md:px-4 md:py-2 pl-8 print:pl-4 print:py-0 print:border-none">
+                            <div className="flex items-center">
+                              <span className="text-xs text-gray-500 print:text-[0.65rem]">
+                                {componente.quantity}x {componente.component_product.name}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                     </React.Fragment>
-                ))}
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
 
           {/* Resumo financeiro */}
-          <div className="mb-4 print:mb-2">            
+          <div className="mb-4 print:mb-2">
             <div className="bg-gray-50 p-2 rounded-lg print:bg-transparent print:p-0 print:border-t print:border-b print:border-gray-300 print:py-1">
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between font-bold pt-1 border-t text-gray-700 print:border-t-0">

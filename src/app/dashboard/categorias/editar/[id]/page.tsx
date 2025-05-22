@@ -14,14 +14,12 @@ export default function EditarCategoriaPage() {
   const router = useRouter();
   const params = useParams();
   const categoriaId = params.id as string;
-  const { setLoading } = useLoading(); // Obtenha a função setLoading do hook
+  const { setLoading } = useLoading();
 
   const [nome, setNome] = useState('');
-
-  // Busca os dados da categoria
   useEffect(() => {
     const fetchCategoria = async () => {
-      setLoading(true); // Ativa o loading antes de iniciar a busca
+      setLoading(true);
       try {
         const { data, error } = await supabase
           .from('categories')
@@ -35,16 +33,15 @@ export default function EditarCategoriaPage() {
           setNome(data.name);
         }
       } finally {
-        setLoading(false); // Desativa o loading após a conclusão (sucesso ou erro)
+        setLoading(false);
       }
     };
 
     fetchCategoria();
-  }, [categoriaId, setLoading]); // Adicione setLoading às dependências
-
+  }, [categoriaId, setLoading]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true); // Ativa o loading antes de iniciar a atualização
+    setLoading(true);
     try {
       const { error } = await supabase
         .from('categories')
@@ -58,7 +55,7 @@ export default function EditarCategoriaPage() {
         router.push('/dashboard/categorias');
       }
     } finally {
-      setLoading(false); // Desativa o loading após a conclusão
+      setLoading(false);
     }
   };
 
@@ -80,23 +77,23 @@ export default function EditarCategoriaPage() {
             required
           />
         </div>
-              {/* Botão Flutuante salvar */}
-              <button
-                type="submit"
-                className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
-              >
-                <SaveIcon /> 
-              </button>
+        {/* Botão Flutuante salvar */}
+        <button
+          type="submit"
+          className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+        >
+          <SaveIcon />
+        </button>
       </form>
-      
+
       {/* Botão de Voltar no canto inferior esquerdo */}
       <button
-          onClick={() => router.push('/dashboard/categorias')}
-          className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
-        >
-          <LeftArrowIcon />
-        </button>
-        <ToastContainer
+        onClick={() => router.push('/dashboard/categorias')}
+        className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
+      >
+        <LeftArrowIcon />
+      </button>
+      <ToastContainer
         position="top-center"
         autoClose={5000}
         hideProgressBar={false}

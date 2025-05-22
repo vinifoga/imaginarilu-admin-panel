@@ -113,16 +113,12 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printForClient, setPrintForClient] = useState(false);
 
-  // Função para gerar um ID curto a partir do UUID
   const getShortId = (id: string) => {
     return id.slice(0, 8).toUpperCase();
   };
-
-  // Função para formatar o intervalo de hora
   const formatTimeInterval = (time: string) => {
     if (!time) return 'Não especificado';
 
-    // Extrai apenas a hora (HH:MM)
     const hour = time.split(':')[0];
     const nextHour = String(parseInt(hour) + 1).padStart(2, '0');
 
@@ -132,7 +128,6 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
   useEffect(() => {
     const fetchSaleData = async () => {
       try {
-        // Buscar dados da venda
         const { data: saleData, error: saleError } = await supabase
           .from('sales')
           .select('*')
@@ -143,7 +138,6 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
 
         setSale(saleData);
 
-        // Buscar itens da venda
         const { data: itemsData, error: itemsError } = await supabase
           .from('sale_items')
           .select(`
@@ -164,7 +158,6 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
         if (itemsData !== null) {
           const formattedItems = await Promise.all(
             (itemsData as SaleItemWithProduct[]).map(async (item) => {
-              // Buscar imagem do item principal
               const { data: imagensData } = await supabase
                 .from('product_images')
                 .select('image_url')
@@ -178,7 +171,6 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
                 is_composition: item.products?.is_composition || false,
               };
 
-              // Se for um produto composto, buscar seus componentes
               if (item.products?.is_composition) {
                 const { data: componentsData } = await supabase
                   .from('product_components')
@@ -196,14 +188,12 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
 
                 const components = await Promise.all(
                   (componentsData as ProductComponentDB[] | null)?.map(async (component) => {
-                    // Buscar preço do componente
                     const { data: priceData } = await supabase
                       .from('products')
                       .select('sale_price')
                       .eq('id', component.component_product_id)
                       .single();
 
-                    // Acessar propriedades com segurança
                     const productName = component.products?.name || '';
                     const productImage = component.products?.product_images?.[0]?.image_url || null;
                     const componentPrice = priceData?.sale_price || 0;
@@ -233,7 +223,6 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
           setItems(formattedItems);
         }
 
-        // Se for entrega, buscar informações de entrega
         if (saleData.sale_type === 'delivery') {
           const { data: deliveryData, error: deliveryError } = await supabase
             .from('delivery_infos')
@@ -258,15 +247,12 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
   }, [id]);
 
   useEffect(() => {
-    // Verifica se veio da preparação de pedido
     const urlParams = new URLSearchParams(window.location.search);
     const fromPreparation = urlParams.get('fromPreparation');
 
     if (fromPreparation === 'true') {
-      // Pequeno delay para garantir que o componente está renderizado
       setTimeout(() => {
         window.print();
-        // Volta após imprimir
         setTimeout(() => router.push('/dashboard/pedidos-pendentes'), 1000);
       }, 500);
     }
@@ -275,18 +261,16 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
   const handlePrint = (forClient = false) => {
     setPrintForClient(forClient);
 
-    // Pequeno delay para garantir que o estado foi atualizado
     setTimeout(() => {
       window.print();
-      // Resetar o estado após a impressão
       setTimeout(() => setPrintForClient(false), 1000);
     }, 100);
   };
 
-  const getTopItemsImages = () => {
-    const sortedItems = [...items].sort((a, b) => b.total_price - a.total_price);
-    return sortedItems.slice(0, 3).filter(item => item.product_image);
-  };
+  // const getTopItemsImages = () => {
+  //   const sortedItems = [...items].sort((a, b) => b.total_price - a.total_price);
+  //   return sortedItems.slice(0, 3).filter(item => item.product_image);
+  // };
 
   if (isLoading) {
     return (
@@ -305,7 +289,6 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
   }
   const handleStatusChange = async (newStatus: OrderStatus) => {
     try {
-      // Converte o enum para o formato do banco de dados
       const dbStatus = getStatusFromTranslation(newStatus).toString();
 
       const { error } = await supabase
@@ -314,8 +297,6 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
         .eq('id', id);
 
       if (error) throw error;
-
-      // Atualiza o estado local de forma mais eficiente
       setSale(prev => {
         console.log(prev)
         console.log(newStatus)
@@ -409,13 +390,12 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
                 status={getStatusEnum(sale.status)}
                 onChange={handleStatusChange}
                 key={sale.status}
-              // Esconde o badge na impressão
               />
               </div>
             </div>
 
             {/* Mostra apenas 1 imagem principal na impressão */}
-            {getTopItemsImages().length > 0 && (
+            {/* {getTopItemsImages().length > 0 && (
               <div className="flex justify-center gap-2 print:gap-0 print:justify-start">
                 {getTopItemsImages().slice(0, 1).map((item, index) => (
                   <div key={index} className="w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden border print:w-10 print:h-10 print:border-none">
@@ -429,7 +409,7 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
                   </div>
                 ))}
               </div>
-            )}
+            )} */}
           </div>
 
           {/* Número do pedido e data - simplificado para impressão */}
@@ -498,10 +478,7 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
                           {formatarMoeda(item.total_price)}
                         </td>
                       </tr>
-
-                      {/* Componentes - visíveis em tela e impressão */}
                       {item.components?.map((component, compIndex) => (
-                        // Add key to component rows
                         <tr key={`${item.id}-comp-${component.product_id}-${compIndex}`} className="print:!bg-transparent">
                           <td className="px-2 py-1 md:px-4 md:py-2 pl-8 print:pl-4 print:py-0 print:border-none">
                             <div className="flex items-center">
@@ -519,7 +496,7 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
             </div>
           </div>
 
-          {/* Resumo financeiro - uma coluna apenas */}
+          {/* Resumo financeiro */}
           <div className="mb-4 print:mb-2">
             <div className="bg-gray-50 p-2 rounded-lg print:bg-transparent print:p-0 print:border-t print:border-b print:border-gray-300 print:py-1">
               <div className="space-y-1 text-xs">
@@ -553,7 +530,7 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
             </div>
           </div>
 
-          {/* Observações - apenas texto simples */}
+          {/* Observações */}
           {sale.notes && (
             <div className="mb-4 bg-gray-50 p-2 print:bg-transparent print:p-0 print:py-1 notes-section">
               <p className="text-xs text-gray-700 whitespace-pre-line">
@@ -693,11 +670,11 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
         onClose={() => setShowPrintModal(false)}
         onConfirm={() => {
           setShowPrintModal(false);
-          handlePrint(true); // Imprime a via do cliente
+          handlePrint(true);
         }}
         onCancel={() => {
           setShowPrintModal(false);
-          handlePrint(); // Imprime apenas a via da loja (false é o padrão)
+          handlePrint();
         }}
         title="Imprimir Comprovante"
         message="Qual via quer imprimir?"

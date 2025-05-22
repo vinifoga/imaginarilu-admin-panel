@@ -49,7 +49,7 @@ interface ComponentProduct {
 
 export default function EditarProdutoPage() {
   const router = useRouter();
-  const { id } = useParams(); // Obtém o ID do produto da URL
+  const { id } = useParams();
   const [nome, setNome] = useState<string>('');
   const [descricao, setDescricao] = useState<string>('');
   const [codigoBarras, setCodigoBarras] = useState<string>('');
@@ -88,12 +88,9 @@ export default function EditarProdutoPage() {
   const [mostrarScannerAddProduto, setMostrarScannerAddProduto] = useState(false);
   const [active, setActive] = useState<boolean>(true);
 
-
-  // Função para buscar os dados do produto
   const fetchProduto = async () => {
     setLoading(true);
     try {
-      // Busca o produto
       const { data: produto, error: produtoError } = await supabase
         .from('products')
         .select('*')
@@ -102,7 +99,6 @@ export default function EditarProdutoPage() {
 
       if (produtoError) throw produtoError;
 
-      // Preenche os campos com os dados do produto
       setNome(produto.name ? produto.name : '');
       setDescricao(produto.description ? produto.description : '');
       setCodigoBarras(produto.barcode ? produto.barcode : '');
@@ -119,7 +115,7 @@ export default function EditarProdutoPage() {
         setValorCompra(formatarMoeda(produto.cost_price));
         setValorVenda(formatarMoeda(produto.sale_price));
       }
-      setSellShopee(produto.sell_shopee ?? false);  // Usando nullish coalescing
+      setSellShopee(produto.sell_shopee ?? false);
       setSellMercadoLivre(produto.sell_mercado_livre ?? false);
       setSellOnline(produto.sell_online ?? false);
       setValorVendaShopee(formatarMoeda(produto.sale_price_shopee));
@@ -133,7 +129,6 @@ export default function EditarProdutoPage() {
       setComposition(produto.is_composition || false);
       setValorVendaLojaVirtual(formatarMoeda(produto.sale_price_virtual_store));
 
-      // Busca as imagens do produto
       const { data: imagensData, error: imagensError } = await supabase
         .from('product_images')
         .select('image_url')
@@ -145,7 +140,6 @@ export default function EditarProdutoPage() {
 
       setImagens(Array(3).fill(null));
 
-      // Busca as categorias do produto
       const { data: categoriasData, error: categoriasError } = await supabase
         .from('product_categories')
         .select('categories(id, name)')
@@ -155,7 +149,6 @@ export default function EditarProdutoPage() {
 
       setCategoriasSelecionadas(categoriasData.map((item) => item.categories).flat());
 
-      // Se for um produto composto, busca os componentes
       if (produto.is_composition) {
         const { data: componentesData, error: componentesError } = await supabase
           .from('product_components')
@@ -167,7 +160,6 @@ export default function EditarProdutoPage() {
         const produtosComponentes = await Promise.all(
           componentesData.map(async (componente) => {
             try {
-              // Busca o produto componente
               const { data: produtoComponente, error: produtoError } = await supabase
                 .from('products')
                 .select(`*`)
@@ -176,7 +168,6 @@ export default function EditarProdutoPage() {
 
               if (produtoError) throw produtoError;
 
-              // Busca a primeira imagem do produto componente (se existir)
               const { data: imagemData, error: imagemError } = await supabase
                 .from('product_images')
                 .select('image_url')
@@ -199,7 +190,6 @@ export default function EditarProdutoPage() {
           })
         );
 
-        // Filtra quaisquer resultados nulos (de erros) e tipa corretamente
         const componentesValidos = produtosComponentes.filter(Boolean) as ComponentProduct[];
         setComponentes(componentesValidos);
         calcularValorCompra(componentesValidos);
@@ -218,12 +208,10 @@ export default function EditarProdutoPage() {
     }
   }, [id]);
 
-  // Função para salvar as alterações
   const salvarAlteracoes = async () => {
     setLoading(true);
 
     try {
-      // Atualiza o produto
       const { error: produtoError } = await supabase
         .from('products')
         .update({
@@ -252,7 +240,6 @@ export default function EditarProdutoPage() {
 
       if (produtoError) throw produtoError;
 
-      // Atualiza as categorias
       const { error: categoriasError } = await supabase
         .from('product_categories')
         .delete()
@@ -271,7 +258,6 @@ export default function EditarProdutoPage() {
 
       if (categoriasInsertError) throw categoriasInsertError;
 
-      // Atualiza as imagens (se necessário)
       for (const link of linksImagens) {
         if (link) {
           const { error: imagemError } = await supabase
@@ -282,17 +268,16 @@ export default function EditarProdutoPage() {
         }
       }
 
-      // Se for um produto composto, atualiza os componentes
       if (isComposition) {
         const { error: componentesError } = await supabase
           .from('product_components')
           .delete()
-          .eq('parent_product_id', id); // Alterado de composite_product_id para parent_product_id
+          .eq('parent_product_id', id);
 
         if (componentesError) throw componentesError;
 
         const componentesParaSalvar = componentes.map((componente) => ({
-          parent_product_id: id, // Alterado de composite_product_id para parent_product_id
+          parent_product_id: id,
           component_product_id: componente.product.id,
           quantity: componente.quantity,
         }));
@@ -320,9 +305,8 @@ export default function EditarProdutoPage() {
 
     if (deleteImagesError) throw deleteImagesError;
 
-    // Insere apenas as imagens que existem
     const imagensParaSalvar = linksImagens
-      .filter(link => link) // Filtra apenas links não vazios
+      .filter(link => link)
       .map(link => ({
         product_id: id,
         image_url: link
@@ -477,7 +461,6 @@ export default function EditarProdutoPage() {
     if (file) {
       try {
         setIsUploading(true);
-        // Inicializa o progresso
         const newProgress = [...uploadProgress];
         newProgress[index] = 0;
         setUploadProgress(newProgress);
@@ -485,11 +468,10 @@ export default function EditarProdutoPage() {
         const formData = new FormData();
         formData.append("file", file);
 
-        // Usando XMLHttpRequest para ter eventos de progresso
         const xhr = new XMLHttpRequest();
 
         xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable && event.total > 0) { // Verifica se total é válido
+          if (event.lengthComputable && event.total > 0) {
             const progress = Math.round((event.loaded * 100) / event.total);
             const newProgress = [...uploadProgress];
             newProgress[index] = progress;
@@ -521,13 +503,11 @@ export default function EditarProdutoPage() {
         toast.error("Erro ao enviar imagem. Tente novamente.");
       } finally {
         setIsUploading(false);
-        // Reseta o progresso
         const newProgress = [...uploadProgress];
         newProgress[index] = 0;
         setUploadProgress(newProgress);
       }
     } else {
-      // Remove a imagem
       novosLinks[index] = '';
       novasImagens[index] = null;
       const newProgress = [...uploadProgress];
@@ -540,7 +520,6 @@ export default function EditarProdutoPage() {
   };
 
   const adicionarProduto = (produto: Product, quantidade: number) => {
-    // Verifica se o produto já está na lista de componentes
     const produtoExistente = componentes.find((c) => c.product.id === produto.id);
 
     if (produtoExistente) {
@@ -557,18 +536,18 @@ export default function EditarProdutoPage() {
     const totalValorCompraComposto = componentes.reduce((acc, componente) => {
       return acc + componente.product.cost_price * componente.quantity;
     }, 0);
-    setValorCompraComposto(totalValorCompraComposto); // Atualiza o valor de compra do produto composto
+    setValorCompraComposto(totalValorCompraComposto);
 
     const totalValorVendaComposto = componentes.reduce((acc, componente) => {
       return acc + componente.product.sale_price * componente.quantity;
     }, 0);
-    setValorVendaComposto(formatarMoeda(totalValorVendaComposto)); // Atualiza o valor de venda do produto composto
+    setValorVendaComposto(formatarMoeda(totalValorVendaComposto));
 
     const valorCustoEquivalente = totalValorVendaComposto / 2;
 
-    setValorVendaLojaVirtual(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroLojaVirtual.replace('%', '')) / 100)))); // Atualiza o valor de venda da loja virtual
-    setValorVendaShopee(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroShopee.replace('%', '')) / 100)))); // Atualiza o valor de venda do Shopee
-    setValorVendaMercadoLivre(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroMercadoLivre.replace('%', '')) / 100)))); // Atualiza o valor de venda do Mercado Livre
+    setValorVendaLojaVirtual(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroLojaVirtual.replace('%', '')) / 100))));
+    setValorVendaShopee(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroShopee.replace('%', '')) / 100))));
+    setValorVendaMercadoLivre(formatarMoeda(valorCustoEquivalente + (valorCustoEquivalente * (parseFloat(porcentagemLucroMercadoLivre.replace('%', '')) / 100))));
   };
 
   const removerProduto = (id: string) => {
@@ -610,13 +589,12 @@ export default function EditarProdutoPage() {
         active
         `)
       .or(`barcode.ilike.%${termo}%,sku.ilike.%${termo}%,description.ilike.%${termo}%`)
-      .neq('is_composition', true)  // Adiciona a condição onde is_composition não é true
-      .limit(1, { foreignTable: 'product_images' }); // Limita a uma imagem por produto
+      .neq('is_composition', true)
+      .limit(1, { foreignTable: 'product_images' });
 
     if (error) {
       console.error('Erro ao buscar produtos:', error);
     } else {
-      // Ajusta os dados para incluir a primeira imagem (se existir)
       const produtosComImagem = data.map((produto) => ({
         id: produto.id,
         name: produto.name,
@@ -646,7 +624,6 @@ export default function EditarProdutoPage() {
   };
 
 
-  // Função para abrir a câmera e escanear o código de barras
   const abrirCameraParaScanner = () => {
     setMostrarScanner(true);
   };
@@ -764,7 +741,6 @@ export default function EditarProdutoPage() {
             {(imagens.some(img => img) || linksImagens.some(link => link)) && (
               <button
                 onClick={() => {
-                  // Remove todas as imagens
                   setImagens([null, null, null]);
                   setLinksImagens(['', '', '']);
                 }}
@@ -932,7 +908,7 @@ export default function EditarProdutoPage() {
           <input
             type="text"
             value={sku}
-            onChange={(e) => setSku(e.target.value)} // Permite edição manual
+            onChange={(e) => setSku(e.target.value)}
             className="mt-1 block w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500 bg-gray-700 text-white"
             required
           />
@@ -982,7 +958,7 @@ export default function EditarProdutoPage() {
                     <div
                       key={produto.id}
                       className="flex items-center justify-between p-4 bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-700"
-                      onClick={() => adicionarProduto(produto, 1)} // Adiciona o produto com quantidade 1
+                      onClick={() => adicionarProduto(produto, 1)}
                     >
                       <div className="flex-1">
                         <p className="text-gray-300">{produto.name}</p>
@@ -998,7 +974,7 @@ export default function EditarProdutoPage() {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <PlaceholderImage /> // Usa o SVG como placeholder
+                          <PlaceholderImage />
                         )}
                       </div>
                     </div>
@@ -1022,7 +998,7 @@ export default function EditarProdutoPage() {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <PlaceholderImage /> // Usa o SVG como placeholder
+                          <PlaceholderImage />
                         )}
                       </div>
                       <span className="text-gray-300">{componente.product.name}</span>
@@ -1216,7 +1192,6 @@ export default function EditarProdutoPage() {
               checked={sellOnline}
               onChange={(e) => {
                 setSellOnline(e.target.checked);
-                // Chama o cálculo quando marcado
                 if (e.target.checked && abaAtiva === 'simples') {
                   calcularValorVenda(valorCompra, porcentagemLucroLojaVirtual, 'lojaVirtual');
                 } else if (e.target.checked && abaAtiva === 'composto') {
