@@ -46,13 +46,13 @@ interface PaymentAdjustment {
 
 export default function CheckoutPage() {
 
-  const generateTimeIntervals = () => {
-    const intervals = [];
-    for (let hour = 7; hour < 19; hour++) {
-      intervals.push(`${hour.toString().padStart(2, '0')}:00 às ${(hour + 1).toString().padStart(2, '0')}:00`);
-    }
-    return intervals;
-  };
+  // const generateTimeIntervals = () => {
+  //   const intervals = [];
+  //   for (let hour = 7; hour < 19; hour++) {
+  //     intervals.push(`${hour.toString().padStart(2, '0')}:00 às ${(hour + 1).toString().padStart(2, '0')}:00`);
+  //   }
+  //   return intervals;
+  // };
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -94,7 +94,7 @@ export default function CheckoutPage() {
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isOpen, setIsOpen] = useState(false);
-  const [availableIntervals, setAvailableIntervals] = useState<string[]>(generateTimeIntervals());
+  // const [setAvailableIntervals] = useState<string[]>(generateTimeIntervals());
 
 
   useEffect(() => {
@@ -127,21 +127,21 @@ export default function CheckoutPage() {
     }
   }, [paymentMethod, touchedFields.paymentMethod]);
 
-  useEffect(() => {
-    if (saleType === 'delivery' && deliveryInfo.deliveryDate) {
-      const fetchIntervals = async () => {
-        const intervals = await checkAvailableIntervals(deliveryInfo.deliveryDate);
-        setAvailableIntervals(intervals);
+  // useEffect(() => {
+  //   if (saleType === 'delivery' && deliveryInfo.deliveryDate) {
+  //     const fetchIntervals = async () => {
+  //       const intervals = await checkAvailableIntervals(deliveryInfo.deliveryDate);
+  //       // setAvailableIntervals(intervals);
 
-        if (deliveryInfo.deliveryTime && !intervals.some(interval =>
-          interval.startsWith(deliveryInfo.deliveryTime.substring(0, 5)))) {
-          setDeliveryInfo(prev => ({ ...prev, deliveryTime: '' }));
-        }
-      };
+  //       if (deliveryInfo.deliveryTime && !intervals.some(interval =>
+  //         interval.startsWith(deliveryInfo.deliveryTime.substring(0, 5)))) {
+  //         setDeliveryInfo(prev => ({ ...prev, deliveryTime: '' }));
+  //       }
+  //     };
 
-      fetchIntervals();
-    }
-  }, [deliveryInfo.deliveryDate, saleType]);
+  //     fetchIntervals();
+  //   }
+  // }, [deliveryInfo.deliveryDate, saleType]);
 
   const calcularValorTotal = (updateState = false) => {
     const subtotal = cartItems.reduce((total, item) => {
@@ -378,7 +378,7 @@ export default function CheckoutPage() {
             customer_name: deliveryInfo.customerName,
             customer_phone: deliveryInfo.customerPhone,
             delivery_date: `${deliveryInfo.deliveryDate}`,
-            delivery_time: deliveryInfo.deliveryTime ? `${deliveryInfo.deliveryTime.split(' ')[0]}:00` : null,
+            delivery_time: deliveryInfo.deliveryTime,
             cep: deliveryInfo.address.cep,
             street: deliveryInfo.address.street,
             number: deliveryInfo.address.number,
@@ -412,43 +412,43 @@ export default function CheckoutPage() {
     }
   };
 
-  const checkAvailableIntervals = async (date: string) => {
-    if (!date) return generateTimeIntervals();
+  // const checkAvailableIntervals = async (date: string) => {
+  //   if (!date) return generateTimeIntervals();
 
-    try {
-      const formattedDate = new Date(date).toISOString().split('T')[0];
+  //   try {
+  //     const formattedDate = new Date(date).toISOString().split('T')[0];
 
-      const { data: deliveries, error } = await supabase
-        .from('delivery_infos')
-        .select('delivery_time')
-        .eq('delivery_date', formattedDate);
+  //     const { data: deliveries, error } = await supabase
+  //       .from('delivery_infos')
+  //       .select('delivery_time')
+  //       .eq('delivery_date', formattedDate);
 
-      if (error) throw error;
+  //     if (error) throw error;
 
-      const intervalCounts: Record<string, number> = {};
-      const allIntervals = generateTimeIntervals();
+  //     const intervalCounts: Record<string, number> = {};
+  //     const allIntervals = generateTimeIntervals();
 
-      allIntervals.forEach(interval => {
-        intervalCounts[interval] = 0;
-      });
+  //     allIntervals.forEach(interval => {
+  //       intervalCounts[interval] = 0;
+  //     });
 
-      deliveries?.forEach(delivery => {
-        if (delivery.delivery_time) {
-          const timeStr = delivery.delivery_time;
-          const hour = parseInt(timeStr.split(':')[0]);
-          if (hour >= 7 && hour < 19) {
-            const interval = `${hour.toString().padStart(2, '0')}:00 às ${(hour + 1).toString().padStart(2, '0')}:00`;
-            intervalCounts[interval] = (intervalCounts[interval] || 0) + 1;
-          }
-        }
-      });
+  //     deliveries?.forEach(delivery => {
+  //       if (delivery.delivery_time) {
+  //         const timeStr = delivery.delivery_time;
+  //         const hour = parseInt(timeStr.split(':')[0]);
+  //         if (hour >= 7 && hour < 19) {
+  //           const interval = `${hour.toString().padStart(2, '0')}:00 às ${(hour + 1).toString().padStart(2, '0')}:00`;
+  //           intervalCounts[interval] = (intervalCounts[interval] || 0) + 1;
+  //         }
+  //       }
+  //     });
 
-      return allIntervals.filter(interval => intervalCounts[interval] < 2);
-    } catch (error) {
-      console.error('Error checking available intervals:', error);
-      return generateTimeIntervals();
-    }
-  };
+  //     return allIntervals.filter(interval => intervalCounts[interval] < 2);
+  //   } catch (error) {
+  //     console.error('Error checking available intervals:', error);
+  //     return generateTimeIntervals();
+  //   }
+  // };
 
   const validateForms = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -675,35 +675,40 @@ export default function CheckoutPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1 required-field">Hora</label>
-                  <select
+                  <label className="block text-sm text-gray-400 mb-1 required-field">Horário</label>
+                  <input
+                    type="text"
                     name="deliveryTime"
-                    value={
-                      deliveryInfo.deliveryTime
-                        ? `${deliveryInfo.deliveryTime} às ${parseInt(deliveryInfo.deliveryTime.split(':')[0]) + 1}:00`
-                        : ""
-                    }
-                    onChange={(e) => {
-                      const interval = e.target.value;
-                      const startTime = interval.split(' ')[0];
-                      setDeliveryInfo(prev => ({ ...prev, deliveryTime: startTime }));
-                    }}
-                    className="w-full p-3 rounded border border-gray-600 focus:border-blue-500 bg-gray-800 text-white"
+                    value={deliveryInfo.deliveryTime}
+                    onChange={handleDeliveryInfoChange}
+                    onBlur={() => handleFieldBlur('deliveryTime')}
+                    list="horariosSugeridos"
+                    className={`w-full p-3 rounded border ${fieldErrors.deliveryTime && touchedFields.deliveryTime
+                      ? 'border-red-500'
+                      : 'border-gray-600 focus:border-blue-500'
+                      } bg-gray-800 text-white`}
+                    placeholder="Digite ou selecione um horário"
                     required
-                    disabled={!deliveryInfo.deliveryDate || availableIntervals.length === 0}
-                  >
-                    <option value="">Selecione um horário</option>
-                    {availableIntervals.map((interval) => (
-                      <option key={interval} value={interval}>
-                        {interval}
-                      </option>
-                    ))}
-                    {availableIntervals.length === 0 && (
-                      <option value="" disabled>
-                        Nenhum horário disponível para esta data
-                      </option>
-                    )}
-                  </select>
+                  />
+
+                  <datalist id="horariosSugeridos">
+                    <option value="Manhã (9h às 12h)"></option>
+                    <option value="Tarde (12h às 18h)"></option>
+                    <option value="9h às 10h"></option>
+                    <option value="10h às 11h"></option>
+                    <option value="11h às 12h"></option>
+                    <option value="12h às 13h"></option>
+                    <option value="13h às 14h"></option>
+                    <option value="14h às 15h"></option>
+                    <option value="15h às 16h"></option>
+                    <option value="16h às 17h"></option>
+                    <option value="17h às 18h"></option>
+                    <option value="A combinar"></option>
+                  </datalist>
+
+                  {fieldErrors.deliveryTime && touchedFields.deliveryTime && (
+                    <p className="mt-1 text-sm text-red-500">{fieldErrors.deliveryTime}</p>
+                  )}
                 </div>
               </div>
 

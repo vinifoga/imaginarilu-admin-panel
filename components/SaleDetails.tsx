@@ -116,14 +116,14 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
   const getShortId = (id: string) => {
     return id.slice(0, 8).toUpperCase();
   };
-  const formatTimeInterval = (time: string) => {
-    if (!time) return 'Não especificado';
+  // const formatTimeInterval = (time: string) => {
+  //   if (!time) return 'Não especificado';
 
-    const hour = time.split(':')[0];
-    const nextHour = String(parseInt(hour) + 1).padStart(2, '0');
+  //   const hour = time.split(':')[0];
+  //   const nextHour = String(parseInt(hour) + 1).padStart(2, '0');
 
-    return `${hour}:00 às ${nextHour}:00`;
-  };
+  //   return `${hour}:00 às ${nextHour}:00`;
+  // };
 
   useEffect(() => {
     const fetchSaleData = async () => {
@@ -564,7 +564,7 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
           {/* Informações de entrega - versão para tela */}
           {sale.sale_type === 'delivery' && deliveryInfo && (
             <div className="mb-4 p-4 bg-gray-50 rounded-lg print:hidden">
-              <h3 className="font-bold text-gray-800 mb-2">Informações de Entrega</h3>
+              <h3 className="font-bold text-gray-800 mb-2">Informações de Entrega - {getShortId(sale.id)}</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -577,16 +577,11 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
                   <p className="text-sm text-gray-700">
                     <strong>Data:</strong> {formatarData(deliveryInfo.delivery_date)}
                     <span className="mx-2"></span>
-                    <strong>Hora:</strong> {formatTimeInterval(deliveryInfo.delivery_time)}
+                    <strong>Hora:</strong> {(deliveryInfo.delivery_time)}
                   </p>
                   <p className="text-sm text-gray-700">
                     <strong>Endereço:</strong> {deliveryInfo.street}, {deliveryInfo.number}
                   </p>
-                  {deliveryInfo.complement && (
-                    <p className="text-sm text-gray-700">
-                      <strong>Complemento:</strong> {deliveryInfo.complement}
-                    </p>
-                  )}
                 </div>
 
                 <div>
@@ -599,6 +594,11 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
                   <p className="text-sm text-gray-700">
                     <strong>CEP:</strong> {deliveryInfo.cep}
                   </p>
+                  {deliveryInfo.complement && (
+                    <p className="text-sm text-gray-700">
+                      <strong>Complemento:</strong> {deliveryInfo.complement}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -607,8 +607,8 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
           {/* Informações de entrega - versão para impressão */}
           {sale.sale_type === 'delivery' && deliveryInfo && (
             <div className="hidden print:block border-t border-gray-300 pt-2 mt-2 delivery-info">
-              <h3 className="font-bold text-gray-800 mb-2">Informações de Entrega</h3>
-
+              <h3 className="text-sm text-gray-700">Informações de Entrega - {getShortId(sale.id)}</h3>
+              <br></br>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-700">
@@ -617,16 +617,11 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
                   <p className="text-sm text-gray-700">
                     <strong>Data:</strong> {formatarData(deliveryInfo.delivery_date)}
                     <span className="mx-2"></span>
-                    <strong>Hora:</strong> {formatTimeInterval(deliveryInfo.delivery_time)}
+                    <strong>Hora:</strong> {(deliveryInfo.delivery_time)}
                   </p>
                   <p className="text-sm text-gray-700">
                     <strong>Endereço:</strong> {deliveryInfo.street}, {deliveryInfo.number}
                   </p>
-                  {deliveryInfo.complement && (
-                    <p className="text-sm text-gray-700">
-                      <strong>Complemento:</strong> {deliveryInfo.complement}
-                    </p>
-                  )}
                 </div>
 
                 <div>
@@ -639,6 +634,11 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
                   <p className="text-sm text-gray-700">
                     <strong>CEP:</strong> {deliveryInfo.cep}
                   </p>
+                  {deliveryInfo.complement && (
+                    <p className="text-sm text-gray-700">
+                      <strong>Complemento:</strong> {deliveryInfo.complement}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
