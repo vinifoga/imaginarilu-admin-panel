@@ -4,7 +4,7 @@
 import { supabase } from '@/lib/supabaseCliente';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { FiShoppingCart, FiList, FiPackage, FiDollarSign, FiLogOut, FiSearch, FiFileText, FiClock } from 'react-icons/fi';
+import { FiShoppingCart, FiList, FiPackage, FiDollarSign, FiLogOut, FiSearch, FiFileText, FiClock, FiLoader } from 'react-icons/fi';
 import { ClipLoader } from 'react-spinners';
 
 export default function DashboardPage() {
@@ -82,7 +82,7 @@ export default function DashboardPage() {
     },
     {
       path: '/dashboard/pedidos-pendentes',
-      icon: <FiClock className="text-lg" />,
+      icon: <FiLoader className="text-lg" />,
       label: 'Pedidos Pendentes',
       badge: pendingOrdersCount > 0 ? pendingOrdersCount : null
     },

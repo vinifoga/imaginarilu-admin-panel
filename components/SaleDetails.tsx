@@ -420,6 +420,12 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
             <p className="text-gray-600 text-xs md:text-sm print:text-xs">
               {formatarData(sale.created_at)}
             </p>
+            {/* Cliente - apenas nome e telefone */}
+            {sale.sale_type === 'delivery' && deliveryInfo && (
+              <p className="text-gray-700 text-sm print:text-xs whitespace-pre-line">
+                {deliveryInfo.customer_name} - {deliveryInfo.customer_phone}
+              </p>
+            )}
           </div>
 
           {/* Status Timeline */}
@@ -427,14 +433,7 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
             currentStatus={getStatusEnum(sale.status)}
           />
 
-          {/* Cliente - apenas nome e telefone */}
-          {sale.sale_type === 'delivery' && deliveryInfo && (
-            <div className="text-center mb-4 print:mb-2 print:text-left">
-              <p className="text-gray-700 text-sm print:text-xs whitespace-pre-line">
-                {deliveryInfo.customer_name} - {deliveryInfo.customer_phone}
-              </p>
-            </div>
-          )}
+
 
           {/* Itens da venda - tabela simplificada */}
           <div className="mb-4 print:mb-2">
@@ -606,7 +605,7 @@ export default function SaleDetails({ backRoute = '/dashboard/vendas' }: SaleDet
 
           {/* Informações de entrega - versão para impressão */}
           {sale.sale_type === 'delivery' && deliveryInfo && (
-            <div className="hidden print:block border-t border-gray-300 pt-2 mt-2 delivery-info">
+            <div className="hidden print:block border-t border-black pt-2 mt-2 delivery-info">
               <h3 className="text-sm text-gray-700">Informações de Entrega - {getShortId(sale.id)}</h3>
               <br></br>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
